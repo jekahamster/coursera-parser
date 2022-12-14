@@ -30,12 +30,15 @@ def materials_count(path):
     return results
 
 
-def main():
-    path = pathlib.Path("D:\Coursera\DeepLearning.AI")
+def check_materials_count(path):
     results = materials_count(path)
     results = filter(lambda item: item["count"] != 6, results)
 
     print(tabulate(results))
+
+def main():
+    path = pathlib.Path("D:\Coursera\DeepLearning.AI")
+    check_materials_count(path)
 
 if __name__ == "__main__":
     main()
