@@ -3,79 +3,86 @@ import sys
 import pathlib 
 import argparse
 
-from defines import ROOT_DIR
+from defines import DEFAULT_SESSION_FNAME
 
 
-class StoreIfInputsAction(argparse.Action):
-    def __init__(self, 
-                option_strings, 
-                dest, 
-                nargs=None,
-                const=None,
-                default=None, 
-                type=None,
-                choices=None, 
-                required=None,
-                help=None,
-                metavar=None):
-        argparse.Action.__init__(
-            self, 
-            option_strings=option_strings, 
-            dest=dest,
-            nargs=nargs,
-            const=const,
-            default=default,
-            type=type,
-            choices=choices,
-            required=required,
-            help=help,
-            metavar=metavar
-        )
+def _setup_course_data_parser(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-u", "--url",
+        action="store",
+        required=True,
+        type=str,
+    )
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        print(values)
-        print(option_string)
+    parser.add_argument(
+        "--cookies",
+        action="store",
+        required=False,
+        default=DEFAULT_SESSION_FNAME
+    )
+
+    return parser
+
+
+def _setup_download_course_parser(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-p", "--path",
+        action="store",
+        required=True,
+        type=str
+    )
+
+    parser.add_argument(
+        "--cookies",
+        action="store",
+        required=False, 
+        default=DEFAULT_SESSION_FNAME
+    )
+
+    return parser
+
+
+def _setup_login_parser(parser):
+    parser.add_argument(
+        "--email",
+        action="store",
+        required=True
+    )
+
+    parser.add_argument(
+        "--password",
+        action="store",
+        required=True
+    )
+
+    parser.add_argument(
+        "--file-name",
+        action="store",
+        required=False,
+        default=DEFAULT_SESSION_FNAME
+    )
+
+    return parser
 
 
 
 class CommandParserBuilder:
     def __init__(self):
         pass
-
+    
     @staticmethod
     def build():
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "-u", "--url",
-            action="store",
-            required=True,
-            type=str,
-        )
-        parser.add_argument(
-            "-g", "--get-course-data",
-            action="store",
-        )
-        parser.add_argument(
-            "-d", "--download-course-by-data",
-            action="store"
-        )
-        parser.add_argument(
-            "--save-cookies",
-            action="store"
-        )
-        parser.add_argument(
-            "--load-cookies",
-            action="store"
-        )
-        parser.add_argument(
-            "--user-control",
-            action="store"
-        )
-        parser.add_argument(
-            "--download-path",
-            action="store",
-            default="D:\Coursera\DeepLearning.AI"
-        )
+
+        subparsers = parser.add_subparsers(dest="command")
+
+        course_data_parser = subparsers.add_parser("get-course-data")
+        course_download_parser = subparsers.add_parser("download-course")
+        login_parser = subparsers.add_parser("login")
+
+        course_data_parser = _setup_course_data_parser(course_data_parser)
+        course_download_parser = _setup_download_course_parser(course_download_parser)
+        login_parser = _setup_login_parser(login_parser)
 
         return parser
 
