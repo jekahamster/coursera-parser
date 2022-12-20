@@ -1,9 +1,22 @@
 import os
+import time
+import traceback
+import random
 
 from bs4 import BeautifulSoup, NavigableString
 from defines import WEBDRIVER_PATH
 from defines import DOWNLOAD_PATH
 from defines import COOKIES_PATH
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import WebDriverException
+
+
+DEFAULT_REPEATER_ERRORS_TO_EXCEPT = (
+    NoSuchElementException, 
+    StaleElementReferenceException, 
+    WebDriverException
+)
 
 
 def prepare_file_name(file_name):
@@ -115,5 +128,25 @@ def init():
     make_dirs_if_not_exists(COOKIES_PATH)
 
 
+def repeater(timeout, retry=5, random_timeout_function=random.random, errors=DEFAULT_REPEATER_ERRORS_TO_EXCEPT):
+    def inner(function):
+        def wrapper(*args, **kwargs):
+            iteration = 0
+            
+            ms_timeout = timeout / 1000
+            ms_random_timeout_function = lambda: random_timeout_function() / 1000
 
-
+            while ((retry is not None) and (iteration < retry)) or (retry is None):
+                iteration += 1
+                
+                try:
+                    return function(*args, **kwargs)
+                except errors as e:
+                    # traceback.print_exc()
+                    print(traceback.format_exc())
+                
+                time.sleep(ms_timeout + ms_random_timeout_function())
+            
+            raise Exception(f"Repeater was tried about {retry} times without results")
+        return wrapper
+    return inner

@@ -17,6 +17,7 @@ from utils import prepare_file_name
 from utils import prepare_dir_name
 from utils import get_inner_text
 from utils import make_dirs_if_not_exists
+from utils import repeater
 from driver_builder import build_chrome_driver
 from bs4 import BeautifulSoup
 from selenium import webdriver 
@@ -55,18 +56,6 @@ available_lesson_types = (
     "ungraded external tool", 
     "reading"
 )
-
-
-def repeater(function):
-    def wrapper(*args, **kwargs):
-        while True:
-            try:
-                return function(*args, **kwargs)
-            except (NoSuchElementException, StaleElementReferenceException, WebDriverException) as e:
-                print(f"{e.__class__.__name__}: {e}")
-            time.sleep(random.random() * 5)
-
-    return wrapper
 
 
 def _download_and_save_file(url, path):
