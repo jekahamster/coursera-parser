@@ -129,6 +129,26 @@ def init():
 
 
 def repeater(timeout, retry=5, random_timeout_function=random.random, errors=DEFAULT_REPEATER_ERRORS_TO_EXCEPT):
+    """
+    Repeat function 'retry' times
+
+    Parameters
+    ----------
+    timeout : int | float
+        Times between tries.
+    
+    retry : int
+        Count of tries.
+
+    random_timeout_function : Callable[[], float]
+        Time noise added to waiting.
+
+    errrors : Exception | Tuple[Exception]
+        Single error or list/tuple of exceptions that must be excepted
+
+    
+    """    
+    
     def inner(function):
         def wrapper(*args, **kwargs):
             iteration = 0
