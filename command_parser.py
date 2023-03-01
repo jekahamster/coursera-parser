@@ -29,14 +29,16 @@ def _setup_download_course_parser(parser: argparse.ArgumentParser):
         "-p", "--path",
         action="store",
         required=True,
-        type=str
+        type=str,
+        help="Path to course data json"
     )
 
     parser.add_argument(
         "--cookies",
         action="store",
         required=False, 
-        default=DEFAULT_SESSION_FNAME
+        default=DEFAULT_SESSION_FNAME,
+        help="Path to cookies"
     )
 
     return parser
