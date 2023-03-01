@@ -34,14 +34,14 @@ def prepare_file_name(file_name):
         String without forbidden chars
     """
     
-    to_replace = ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]
+    to_replace = ["\\", "/", ":", "*", "?", "\"", "<", ">", "|", "\n", "\r"]
     for symbol in to_replace:
         file_name = file_name.replace(symbol, "")  
     
     return file_name
 
 
-def prepare_dir_name(dir_name):
+def prepare_dir_name(dir_name, max_name_len=30):
     """
     Remove forbidden for dir naming chars in windows
 
@@ -57,8 +57,8 @@ def prepare_dir_name(dir_name):
     """
     
     dir_name = prepare_file_name(dir_name)
-    if len(dir_name) > 30:
-        dir_name = f"{dir_name[:30]}"
+    if len(dir_name) > max_name_len:
+        dir_name = f"{dir_name[:max_name_len]}"
 
     to_replace = ["."]
     for symbol in to_replace:
