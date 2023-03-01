@@ -28,18 +28,19 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 
 
 week_page_items_paths = {
-    "course_name": "h3[title]", # h3.cds-137
+    "course_name": "h2[title]", # h3.cds-137
     # "week_items": ".css-vquajy ul li a",
     "week_items": "nav[aria-label='Course'] div[title='Course Material'] ul li a",
     "lessons_group_items": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
-    "week_name": "h3.css-1wkjz26 .cds-134 .cds-AccordionHeader-content span.cds-137",
-    "group_name": "h3 .cds-137",
+    "week_name": ".rc-PeriodPageRefresh h1",
+    "lessons_group_items__group_name": "h2",
     "downloads_dropdown_menu": "#downloads-dropdown-btn",
     "downloads_dropdown_menu_items": 'ul[role="menu"].bt3-dropdown-menu > li.menuitem > a',
     "file_name": "span",
     "lessons_items": ".cds-AccordionRoot-container > div ul li a",
     "lessons_items__lesson_name": "p[data-test='rc-ItemName']",
     "lessons_items__lesson_type": ".rc-WeekItemAnnotations > div.css-6t2mmp", # class required
+    
 }
 
 login_page_items_paths = {
@@ -54,7 +55,9 @@ available_lesson_types = (
     "practice programming assignment", 
     "quiz", 
     "ungraded external tool", 
-    "reading"
+    "reading",
+    "peer-graded assignment",
+    "review your peers"
 )
 
 
@@ -323,7 +326,7 @@ class CourseraParser:
                 
         return False
 
-    @repeater
+    @repeater(TIMEOUT)
     def download_from_video_page(self, url, download_path):
         self.driver.get(url)
         self.change_download_path(download_path)
@@ -400,11 +403,11 @@ class CourseraParser:
         }
 
         for group_index, lessons_group in enumerate(lessons_group_items):
-            group_name = lessons_group.find_element(By.CSS_SELECTOR, week_page_items_paths["group_name"]).text.strip()
+            lessons_group_items__group_name = lessons_group.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_group_items__group_name"]).text.strip()
             lessons_data = self._get_lessons_data(lessons_group)
 
             group_data = {
-                "name": group_name,
+                "name": lessons_group_items__group_name,
                 "lessons": lessons_data
             }
             week_data["lessons_groups"].append(group_data)
@@ -499,14 +502,14 @@ class CourseraParser:
             print(week_name)
 
             for group_index, lesson_group_data in enumerate(week_data["lessons_groups"]):
-                lesson_group_name = f'{group_index+1} {prepare_dir_name(lesson_group_data["name"])}'
-                print(f"\t{lesson_group_name}")
+                lesson_lessons_group_items__group_name = f'{group_index+1} {prepare_dir_name(lesson_group_data["name"])}'
+                print(f"\t{lesson_lessons_group_items__group_name}")
                 
                 for lesson_index, lesson_data in enumerate(lesson_group_data["lessons"]):
                     lesson_name = f'{lesson_index+1} {prepare_dir_name(lesson_data["name"])}'
                     lesson_type = lesson_data["type"]
                     lesson_url = lesson_data["url"]
-                    video_download_path = download_path / course_name / week_name / lesson_group_name / lesson_name
+                    video_download_path = download_path / course_name / week_name / lesson_lessons_group_items__group_name / lesson_name
                     print(f"\t\t{lesson_name}")
 
                     make_dirs_if_not_exists(video_download_path)
