@@ -8,11 +8,13 @@ import requests
 import threading
 import json
 import argparse
+import warnings
 
 from defines import ROOT_DIR
 from defines import DOWNLOAD_PATH
 from defines import WEBDRIVER_PATH
 from defines import TIMEOUT
+from defines import DEBUG
 from utils import prepare_file_name
 from utils import prepare_dir_name
 from utils import get_inner_text
@@ -30,17 +32,24 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 week_page_items_paths = {
     "course_name": "h2[title]", # h3.cds-137
     # "week_items": ".css-vquajy ul li a",
-    "week_items": "nav[aria-label='Course'] div[title='Course Material'] ul li a",
-    "lessons_group_items": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
     "week_name": ".rc-PeriodPageRefresh h1",
-    "lessons_group_items__group_name": "h2",
+    
+    "week_items": "nav[aria-label='Course'] div[title='Course Material'] ul li a",
+    
+    "lessons_groups": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
+    "lessons_groups__name": "h2",
+    "lessons_groups__lessons": ".cds-AccordionRoot-container > div ul li",
+    "lessons_groups__lessons__link": "li > div > a",
+    "lessons_groups__lessons__name": "p[data-test='rc-ItemName']",
+    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div.css-6t2mmp", # ! css class required !
+    "lessons_groups__lessons__type_class": "li > div"
+   
+}
+
+video_page_items_paths = {
     "downloads_dropdown_menu": "#downloads-dropdown-btn",
     "downloads_dropdown_menu_items": 'ul[role="menu"].bt3-dropdown-menu > li.menuitem > a',
     "file_name": "span",
-    "lessons_items": ".cds-AccordionRoot-container > div ul li a",
-    "lessons_items__lesson_name": "p[data-test='rc-ItemName']",
-    "lessons_items__lesson_type": ".rc-WeekItemAnnotations > div.css-6t2mmp", # class required
-    
 }
 
 login_page_items_paths = {
@@ -49,7 +58,8 @@ login_page_items_paths = {
     "login_button_send": "form button[type='submit'][data-e2e='login-form-submit-button']"
 }
 
-available_lesson_types = (
+available_lesson_types = list(map(lambda x: x.lower(), [
+    "",
     "video", 
     "programming assignment", 
     "practice programming assignment", 
@@ -57,8 +67,11 @@ available_lesson_types = (
     "ungraded external tool", 
     "reading",
     "peer-graded assignment",
-    "review your peers"
-)
+    "review your peers",
+    "Discussion Prompt",
+    "Practice Quiz",
+    "Graded External Tool"
+]))
 
 
 def _download_and_save_file(url, path):
@@ -95,7 +108,7 @@ def _wait_week_page_loading(driver):
     wait.until(
         lambda driver: driver.find_elements(
             By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_group_items"]
+            week_page_items_paths["lessons_groups"]
         )
     )
 
@@ -103,7 +116,7 @@ def _wait_week_page_loading(driver):
     wait.until(
         lambda driver: driver.find_elements(
             By.CSS_SELECTOR,
-            week_page_items_paths["lessons_group_items"] + " " + week_page_items_paths["lessons_items"]
+            week_page_items_paths["lessons_groups"] + " " + week_page_items_paths["lessons_groups__lessons"]
         )
     )
 
@@ -111,11 +124,11 @@ def _wait_week_page_loading(driver):
     wait.until(
         lambda driver: driver.find_elements(
             By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_group_items"] + \
+            week_page_items_paths["lessons_groups"] + \
                 " " + \
-                week_page_items_paths["lessons_items"] + \
+                week_page_items_paths["lessons_groups__lessons"] + \
                 " " + \
-                week_page_items_paths["lessons_items__lesson_type"]
+                week_page_items_paths["lessons_groups__lessons__type"]
         )
     )
     
@@ -131,7 +144,7 @@ def _wait_video_page_loading(driver):
 
     print("Loading download dropdown button")
     wait.until(
-        lambda driver: driver.find_element(By.CSS_SELECTOR, week_page_items_paths["downloads_dropdown_menu"])
+        lambda driver: driver.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu"])
     )
 
     time.sleep(1)
@@ -145,13 +158,13 @@ def _wait_video_dropdown_menu_loading(driver):
     
     print("Loading downloads dropdown menu items")
     dropdown_items = wait.until(
-        lambda driver: driver.find_elements(By.CSS_SELECTOR, week_page_items_paths["downloads_dropdown_menu_items"])
+        lambda driver: driver.find_elements(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items"])
     )
 
     print("Loading file names")
     wait.until(
         lambda driver: len(driver.find_elements(
-                By.CSS_SELECTOR, f'{week_page_items_paths["downloads_dropdown_menu_items"]} {week_page_items_paths["file_name"]}:nth-child(1)'
+                By.CSS_SELECTOR, f'{video_page_items_paths["downloads_dropdown_menu_items"]} {video_page_items_paths["file_name"]}:nth-child(1)'
             )) >= len(dropdown_items)
     )
     time.sleep(1)
@@ -201,7 +214,6 @@ class CourseraParser:
                                         detach=False, 
                                         download_path=DOWNLOAD_PATH)
 
-
     def _get_lesson_data(self, lesson_item):
         """
         Gets information about lesson by lesson item
@@ -210,7 +222,7 @@ class CourseraParser:
         ----------
         lesson_item : selenium.webdriver.remote.webelement.WebElement
             Lesson item. 
-            Check path in week_page_items_paths: lessons_group_items + lessons_items.
+            Check path in week_page_items_paths: lessons_groups + lessons_items.
         
 
         Returns
@@ -222,33 +234,43 @@ class CourseraParser:
                 'type': str  # lesson type (Check available_lesson_types variable)
             }
         """
-        lesson_item_bs = BeautifulSoup(lesson_item.get_attribute("outerHTML"), "html.parser").find("a")
-        lesson_url = lesson_item_bs["href"]
-        lesson_name = lesson_item_bs.select_one(week_page_items_paths["lessons_items__lesson_name"]).get_text().strip()
-        lesson_type = get_inner_text(lesson_item_bs.select_one(week_page_items_paths["lessons_items__lesson_type"]))
+        lesson_item_bs = BeautifulSoup(lesson_item.get_attribute("outerHTML"), "html.parser")
+        lesson_url = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__link"])["href"].strip()
+        lesson_name = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__name"]).get_text().strip()
+        lesson_type_class = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__type_class"])["data-test"]
         
+        lesson_type_item = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__type"])
+        if not lesson_type_item:
+            warnings.warn(f"Empty lesson_type at lesson '{lesson_name}'")
+
+        lesson_type = get_inner_text(lesson_type_item) if lesson_type_item else ""
+        lesson_type_descr = lesson_type_item.text if lesson_type_item else ""
+
+
         if lesson_url.startswith("/"):
             lesson_url = "https://www.coursera.org" + lesson_url
 
         assert lesson_url, "Empty lesson url"
         assert lesson_name, "Empty lesson name"
-        assert lesson_type, "Empty lesson type"
         assert lesson_url.startswith("http"), "Invalid url"
-        assert lesson_type.lower() in available_lesson_types, \
+        assert (DEBUG and lesson_type.lower() in available_lesson_types) or not DEBUG, \
                 f"Unrecognized lesson type {lesson_type}"
 
         lesson_data = {
             "name": lesson_name,
             "url": lesson_url,
-            "type": lesson_type
+            "type": lesson_type,
+            "type_descr": lesson_type_descr,
+            "type_class": lesson_type_class
         }
 
         return lesson_data
 
     def _get_lessons_data(self, lessons_block):
         time.sleep(2)
+
         lessons_items = WebDriverWait(lessons_block, TIMEOUT).until(
-            lambda lessons_block: lessons_block.find_elements(By.CSS_SELECTOR, week_page_items_paths["lessons_items"])
+            lambda lessons_block: lessons_block.find_elements(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__lessons"])
         )
         lessons_data = []
 
@@ -266,10 +288,16 @@ class CourseraParser:
         os.system("pause")
 
     def save_cookies(self, path):
+        if type(path) == str:
+            path = pathlib.Path(path)
+
         with open(path, "wb") as file:
             pickle.dump(self.driver.get_cookies(), file)
 
     def load_cookies(self, path):
+        if type(path) == str:
+            path = pathlib.Path(path)
+
         with open(path, "rb") as file:
             cookies = pickle.load(file)
 
@@ -335,16 +363,16 @@ class CourseraParser:
         if not download_path.exists():
             os.makedirs(download_path)
 
-        self._toggle_dropdown_menu(week_page_items_paths["downloads_dropdown_menu"])
+        self._toggle_dropdown_menu(video_page_items_paths["downloads_dropdown_menu"])
 
         _wait_video_dropdown_menu_loading(self.driver)
-        dropdown_menu_items = self.driver.find_elements(By.CSS_SELECTOR, week_page_items_paths["downloads_dropdown_menu_items"])
+        dropdown_menu_items = self.driver.find_elements(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items"])
 
         threads = []
 
         for item in dropdown_menu_items:
             time.sleep(random.random()*2)
-            file_name = item.find_element(By.CSS_SELECTOR, week_page_items_paths["file_name"]).text.strip()
+            file_name = item.find_element(By.CSS_SELECTOR, video_page_items_paths["file_name"]).text.strip()
             href = item.get_attribute("href")
             
             if href.startswith("/"):
@@ -380,6 +408,7 @@ class CourseraParser:
         for thread in threads:
             thread.join()
 
+    @repeater(TIMEOUT)
     def get_week_data(self, url):
         print(f"Get week data")
         print(f"URL: {url}")
@@ -389,9 +418,9 @@ class CourseraParser:
 
         _wait_week_page_loading(self.driver)
 
-        lessons_group_items = self.driver.find_elements(
+        lessons_groups = self.driver.find_elements(
             By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_group_items"])
+            week_page_items_paths["lessons_groups"])
 
         week_name = self.driver.find_element(
             By.CSS_SELECTOR, 
@@ -402,12 +431,12 @@ class CourseraParser:
             "lessons_groups": []
         }
 
-        for group_index, lessons_group in enumerate(lessons_group_items):
-            lessons_group_items__group_name = lessons_group.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_group_items__group_name"]).text.strip()
+        for group_index, lessons_group in enumerate(lessons_groups):
+            lessons_groups__name = lessons_group.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__name"]).text.strip()
             lessons_data = self._get_lessons_data(lessons_group)
 
             group_data = {
-                "name": lessons_group_items__group_name,
+                "name": lessons_groups__name,
                 "lessons": lessons_data
             }
             week_data["lessons_groups"].append(group_data)
