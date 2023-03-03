@@ -25,8 +25,8 @@ There are three commands: `login`, `get-course-data`, and `download-course`. If 
 
 3. `python main.py get-course-data -u <url>` <br>
   As a result of this command, all data about the course will be downloaded to _./download/<COURSE_NAME>.json_. <br>
-  Usually, `<url>` looks like `https://www.coursera.org/learn/<COURSE_NAME>/home/week/1`. <u>You don't need to apply this command for all weeks.</u> The algorithm looks at the first page, calculates the number of weeks, and parses all courses. <br>
-  If you use --file-name in the login command, then you can add --cookies <FILENAME>.pkl to select a different session.
+  Usually, `<url>` looks like `https://www.coursera.org/learn/<COURSE_NAME>/home/week/1`. **You don't need to apply this command for all weeks.** The algorithm looks at the first page, calculates the number of weeks, and parses all courses. <br>
+  If you use `--file-name` in the `login` command, then you can add `--cookies <FILENAME>.pkl` to select a different session.
 
 
 
