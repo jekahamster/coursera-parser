@@ -9,6 +9,8 @@ import threading
 import json
 import argparse
 import warnings
+import colorama
+import traceback
 
 from defines import ROOT_DIR
 from defines import DOWNLOAD_PATH
@@ -27,7 +29,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
+from colorama import Fore
 
+
+colorama.init(autoreset=True)
 
 week_page_items_paths = {
     "course_name": "h2[title]", # h3.cds-137
@@ -47,7 +52,7 @@ week_page_items_paths = {
 }
 
 video_page_items_paths = {
-    "downloads_dropdown_menu": "#downloads-dropdown-btn",
+    "downloads_dropdown_menu_button": "#downloads-dropdown-btn",
     "downloads_dropdown_menu_items": 'ul[role="menu"].bt3-dropdown-menu > li.menuitem > a',
     "file_name": "span",
 }
@@ -70,16 +75,32 @@ available_lesson_types = list(map(lambda x: x.lower(), [
     "review your peers",
     "Discussion Prompt",
     "Practice Quiz",
-    "Graded External Tool"
+    "Graded External Tool",
+    "Ungraded Plugin"
 ]))
+
+available_lesson_type_classes = list(map(lambda x: x.lower(), [
+    "WeekSingleItemDisplay-lecture",
+    "WeekSingleItemDisplay-supplement",
+    "WeekSingleItemDisplay-lecture",
+    "WeekSingleItemDisplay-discussionPrompt",
+    "WeekSingleItemDisplay-exam",
+    "WeekSingleItemDisplay-ungradedWidget"
+]))
+
 
 
 def _download_and_save_file(url, path):
     print(f"GET: {url}")
-    response = requests.request("GET", url)
-    with open(path, "wb") as file:
-        file.write(response.content)
-    print(f"Downloaded: {path}")
+    try:
+        response = requests.request("GET", url)
+        with open(path, "wb") as file:
+            file.write(response.content)
+        print(f"{Fore.GREEN}Downloaded{Fore.RESET}: {path}")
+    except Exception as e:
+        print(Fore.RED + str(e))
+        print(traceback.format_exc())
+        exit()
 
 
 def _wait_week_page_loading(driver):
@@ -144,7 +165,7 @@ def _wait_video_page_loading(driver):
 
     print("Loading download dropdown button")
     wait.until(
-        lambda driver: driver.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu"])
+        lambda driver: driver.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_button"])
     )
 
     time.sleep(1)
@@ -255,6 +276,8 @@ class CourseraParser:
         assert lesson_url.startswith("http"), "Invalid url"
         assert (DEBUG and lesson_type.lower() in available_lesson_types) or not DEBUG, \
                 f"Unrecognized lesson type {lesson_type}"
+        assert (DEBUG and lesson_type_class.lower() in available_lesson_type_classes) or not DEBUG, \
+                f"Unrecognized lesson type class {lesson_type_class}"
 
         lesson_data = {
             "name": lesson_name,
@@ -363,7 +386,7 @@ class CourseraParser:
         if not download_path.exists():
             os.makedirs(download_path)
 
-        self._toggle_dropdown_menu(video_page_items_paths["downloads_dropdown_menu"])
+        self._toggle_dropdown_menu(video_page_items_paths["downloads_dropdown_menu_button"])
 
         _wait_video_dropdown_menu_loading(self.driver)
         dropdown_menu_items = self.driver.find_elements(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items"])
@@ -372,34 +395,18 @@ class CourseraParser:
 
         for item in dropdown_menu_items:
             time.sleep(random.random()*2)
-            file_name = item.find_element(By.CSS_SELECTOR, video_page_items_paths["file_name"]).text.strip()
+
+            file_name = prepare_file_name(item.get_attribute("download").strip())
             href = item.get_attribute("href")
             
             if href.startswith("/"):
                 href = "https://www.coursera.org" + href
 
-            inner_text = item.get_attribute("innerText").strip().lower()
-            if "mp4" in inner_text:
-                file_type = "mp4"
-            elif "vtt" in inner_text:
-                file_type = "vtt"
-            elif "txt" in inner_text:
-                file_type = "txt"
-            elif "doc" in inner_text:
-                file_type = "doc"
-            elif "pdf" in inner_text:
-                file_type = "pdf"
-            elif "pptx" in inner_text:
-                file_type = "pptx"
-            else:
-                raise Exception(f"Invalid file type \n{inner_text}")
-
-            file_name = prepare_file_name(file_name)
             assert href.startswith("https://") or href.startswith("http://"), f"Invalid url {href}" 
 
             downloading_thread = threading.Thread(target=_download_and_save_file, kwargs={
                 "url": href,
-                "path": download_path / f"{file_name}.{file_type}"
+                "path": download_path / file_name
             })
             
             threads.append(downloading_thread)
