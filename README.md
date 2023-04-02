@@ -41,3 +41,5 @@ Like previous section, there you also can use `--cookies` to select appropriate 
  
 
 2. If you see an exception like this _"AssertionError: Unrecognized lesson type Peer-graded Assignment"_ (where _Peer-graded Assignment_ may be replaced by another lesson type), simply set `DEBUG = False` in defines.py.
+
+3. You can only use the English version of the website. To change the website language, go to Settings.
