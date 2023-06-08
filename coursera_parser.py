@@ -1,6 +1,5 @@
 import sys
 import os
-import pathlib
 import pickle
 import time
 import random
@@ -12,6 +11,7 @@ import warnings
 import colorama
 import traceback
 
+from pathlib import Path
 from defines import ROOT_DIR
 from defines import DOWNLOAD_PATH
 from defines import WEBDRIVER_PATH
@@ -28,8 +28,14 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.remote.webdriver import BaseWebDriver
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
 from colorama import Fore
+
+from typing import Union
+from typing import List
+from typing import Dict
 
 
 colorama.init(autoreset=True)
@@ -55,6 +61,7 @@ video_page_items_paths = {
     "downloads_dropdown_menu_button": "#downloads-dropdown-btn",
     "downloads_dropdown_menu_items": 'ul[role="menu"].bt3-dropdown-menu > li.menuitem > a',
     "file_name": "span",
+    "video_name": "h1.video-name"
 }
 
 login_page_items_paths = {
@@ -90,7 +97,7 @@ available_lesson_type_classes = list(map(lambda x: x.lower(), [
 
 
 
-def _download_and_save_file(url, path):
+def _download_and_save_file(url:str, path:Union[str, Path]):
     print(f"GET: {url}")
     try:
         response = requests.request("GET", url)
@@ -103,7 +110,7 @@ def _download_and_save_file(url, path):
         exit()
 
 
-def _wait_week_page_loading(driver):
+def _wait_week_page_loading(driver:BaseWebDriver):
     global week_page_items_paths
     
     print("Loading week page")
@@ -158,7 +165,7 @@ def _wait_week_page_loading(driver):
     print()
 
 
-def _wait_video_page_loading(driver):
+def _wait_video_page_loading(driver:BaseWebDriver):
     print("Loading video page")
     time.sleep(2)
     wait = WebDriverWait(driver, TIMEOUT)
@@ -173,7 +180,7 @@ def _wait_video_page_loading(driver):
     print()
 
 
-def _wait_video_dropdown_menu_loading(driver):
+def _wait_video_dropdown_menu_loading(driver:BaseWebDriver):
     print("Lading dropdown menu")
     wait = WebDriverWait(driver, TIMEOUT)
     
@@ -193,7 +200,7 @@ def _wait_video_dropdown_menu_loading(driver):
     print()
 
 
-def _wait_login_page(driver):
+def _wait_login_page(driver:BaseWebDriver):
     print("Loading login page items")
     wait = WebDriverWait(driver, TIMEOUT)
 
@@ -226,7 +233,7 @@ def _wait_login_page(driver):
 
 
 class CourseraParser:
-    def __init__(self, webdriver=None):
+    def __init__(self, webdriver:BaseWebDriver = None):
         self.driver = webdriver or build_chrome_driver(
                                         webdriver_path=WEBDRIVER_PATH, 
                                         headless=True, 
@@ -235,7 +242,7 @@ class CourseraParser:
                                         detach=False, 
                                         download_path=DOWNLOAD_PATH)
 
-    def _get_lesson_data(self, lesson_item):
+    def _get_lesson_data(self, lesson_item:WebElement):
         """
         Gets information about lesson by lesson item
         
@@ -289,7 +296,7 @@ class CourseraParser:
 
         return lesson_data
 
-    def _get_lessons_data(self, lessons_block):
+    def _get_lessons_data(self, lessons_block:WebElement):
         time.sleep(2)
 
         lessons_items = WebDriverWait(lessons_block, TIMEOUT).until(
@@ -304,22 +311,30 @@ class CourseraParser:
         
         return lessons_data
 
-    def user_control(self, url=None):
+    def _get_file_name_from_video_dropdown_item(self, item:WebElement):
+        original_file_name = item.get_attribute("download").strip()
+        point_index = original_file_name[::-1].find(".")
+        suffix = original_file_name[-point_index-1:]
+        file_name = item.find_elements(By.CSS_SELECTOR, "span")[0].text.strip()
+        
+        return f"{file_name}{suffix}"
+
+    def user_control(self, url:str = None):
         if url:
             self.driver.get(url)
         
         os.system("pause")
 
-    def save_cookies(self, path):
+    def save_cookies(self, path:Path):
         if type(path) == str:
-            path = pathlib.Path(path)
+            path = Path(path)
 
         with open(path, "wb") as file:
             pickle.dump(self.driver.get_cookies(), file)
 
-    def load_cookies(self, path):
+    def load_cookies(self, path:Path):
         if type(path) == str:
-            path = pathlib.Path(path)
+            path = Path(path)
 
         with open(path, "rb") as file:
             cookies = pickle.load(file)
@@ -327,12 +342,12 @@ class CourseraParser:
         for cookie in cookies:
             self.driver.add_cookie(cookie)
 
-    def login_by_cookies(self, path):
+    def login_by_cookies(self, path:Path):
         url = "https://www.coursera.org/"
         self.driver.get(url)
         self.load_cookies(path)
 
-    def login_by_site(self, email=None, password=None):
+    def login_by_site(self, email:str = None, password:str = None):
         url = "https://www.coursera.org/?authMode=login"
         self.driver.get(url)
         
@@ -349,7 +364,7 @@ class CourseraParser:
         button_send.click()
         self.user_control()
 
-    def change_download_path(self, download_path):
+    def change_download_path(self, download_path:Path):
         self.driver.command_executor._commands['send_command'] = (
             'POST', '/session/$sessionId/chromium/send_command')
 
@@ -359,11 +374,11 @@ class CourseraParser:
         }
         self.driver.execute("send_command", params)
 
-    def _toggle_dropdown_menu(self, css_selector):
+    def _toggle_dropdown_menu(self, css_selector:str):
         dropdown_btn = self.driver.find_element(By.CSS_SELECTOR, css_selector)
         dropdown_btn.click()
 
-    def _select_subtitles_lang(self, lang, css_selector):
+    def _select_subtitles_lang(self, lang:str, css_selector:str):
         # #select-language
         select = Select(self.driver.find_element(By.CSS_SELECTOR, css_selector))
         options = select.options
@@ -378,7 +393,7 @@ class CourseraParser:
         return False
 
     @repeater(TIMEOUT)
-    def download_from_video_page(self, url, download_path):
+    def download_from_video_page(self, url:str, download_path:Path):
         self.driver.get(url)
         self.change_download_path(download_path)
         _wait_video_page_loading(self.driver)
@@ -390,13 +405,13 @@ class CourseraParser:
 
         _wait_video_dropdown_menu_loading(self.driver)
         dropdown_menu_items = self.driver.find_elements(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items"])
-
         threads = []
 
         for item in dropdown_menu_items:
             time.sleep(random.random()*2)
 
-            file_name = prepare_file_name(item.get_attribute("download").strip())
+            file_name = self._get_file_name_from_video_dropdown_item(item)
+            file_name = prepare_file_name(file_name)
             href = item.get_attribute("href")
             
             if href.startswith("/"):
@@ -415,8 +430,12 @@ class CourseraParser:
         for thread in threads:
             thread.join()
 
+        video_name = self.driver.find_element(By.CSS_SELECTOR, video_page_items_paths["video_name"]).text.strip()
+        with open(download_path / f"video_name.txt", "w", encoding="UTF-8") as file:
+            file.write(video_name)
+
     @repeater(TIMEOUT)
-    def get_week_data(self, url):
+    def get_week_data(self, url:str):
         print(f"Get week data")
         print(f"URL: {url}")
         print()
@@ -450,7 +469,7 @@ class CourseraParser:
         
         return week_data     
 
-    def get_course_data(self, url):
+    def get_course_data(self, url:str):
         """
         Parse data from course and return information about it in python object format.
 
@@ -520,9 +539,9 @@ class CourseraParser:
         
         return course_data
 
-    def download_course(self, url, download_path):
-        if not isinstance(type(download_path), pathlib.Path):
-            download_path = pathlib.Path(download_path)
+    def download_course(self, url:str, download_path:Path):
+        if not isinstance(type(download_path), Path):
+            download_path = Path(download_path)
 
         course_data = self.get_course_data(url)
         file_name = prepare_file_name(course_data["name"])
@@ -531,7 +550,7 @@ class CourseraParser:
 
         self.download_by_course_data(course_data, download_path)
         
-    def download_by_course_data(self, course_data, download_path):
+    def download_by_course_data(self, course_data:Dict, download_path:Path):
         course_name = prepare_dir_name(course_data["name"])
         for week_index, week_data in enumerate(course_data["weeks"]):
             week_name = prepare_dir_name(week_data["name"])
