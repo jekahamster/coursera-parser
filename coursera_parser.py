@@ -60,8 +60,17 @@ week_page_items_paths = {
    
 }
 
+quiz_page_items_paths = {
+    "open_quiz_button": "#main div[data-e2e='CoverPageRow__right-side-view'] button",
+    "exit_quiz_button": "div[data-classname='tunnelvision-window-0'] .rc-TunnelVisionClose",
+    "scrolling_element": "#TUNNELVISIONWRAPPER_CONTENT_ID",
+    "honor_code_accept_btn": ".cds-Dialog-dialog .align-right .cds-button-disableElevation"
+}
+
 reading_page_items_paths = {
-    "scrolling_element": ".ItemPageLayout_content_body"
+    "scrolling_element": ".ItemPageLayout_content_body",
+    "left_side_bar": ".ItemPageLayout_content_navigation.cds-grid-item",
+    "coursera_bot_chat_button": "#chat-button-container"
 }
 
 video_page_items_paths = {
@@ -240,7 +249,7 @@ def _wait_login_page(driver:BaseWebDriver):
 
 
 def _wait_reading_page(driver:BaseWebDriver):
-    print("Loading login page items")
+    print("Loading reading page items")
     wait = WebDriverWait(driver, TIMEOUT)
 
     print("Loading scrolling element")
@@ -251,8 +260,65 @@ def _wait_reading_page(driver:BaseWebDriver):
         ) 
     )
 
+    print("Loading left side bar")
+    left_side_bar = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            reading_page_items_paths["left_side_bar"]
+        ) 
+    )
+
+    print("Loading coursera bot chat button")
+    coursera_bot_chat_button = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            reading_page_items_paths["coursera_bot_chat_button"]
+        ) 
+    )
+
     print("Reading page loaded")
-    return scrolling_element
+    return scrolling_element, left_side_bar, coursera_bot_chat_button
+
+
+def _wait_quiz_page_before_quiz_starting(driver:BaseWebDriver):
+    print("Loading quiz page items")
+    wait = WebDriverWait(driver, TIMEOUT)
+
+    print("Loading open quiz button")
+    open_quiz_btn = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            quiz_page_items_paths["open_quiz_button"]
+        ) 
+    )
+
+
+    print("Quiz page loaded")
+    return open_quiz_btn
+
+
+def _wait_quiz_page_after_quiz_starting(driver:BaseWebDriver):
+    print("Loading qiuiz tasks page items")
+    wait = WebDriverWait(driver, TIMEOUT)
+
+    print("Loading exit quiz button")
+    exit_quiz_btn = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            quiz_page_items_paths["exit_quiz_button"]
+        ) 
+    )
+
+    print("Loading quiz tasks scrolling element")
+    quiz_scrolling_element = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            quiz_page_items_paths["scrolling_element"]
+        ) 
+    )
+
+    print("Quiz tasks page loaded")
+    return exit_quiz_btn, quiz_scrolling_element
 
 
 class CourseraParser:
@@ -416,10 +482,36 @@ class CourseraParser:
         return False
 
     @repeater(TIMEOUT)
-    def download_screenshot(self, url:str, download_path:Path):
+    def download_from_quiz_page(self, url:str, download_path:Path):
+        self.driver.get(url)
+        start_quiz_btn = _wait_quiz_page_before_quiz_starting(self.driver)
+
+        honor_code_btn = self.driver.find_element(By.CSS_SELECTOR, quiz_page_items_paths["honor_code_accept_btn"])
+        if honor_code_btn:
+            honor_code_btn.click()
+
+        start_quiz_btn.click()
+        time.sleep(1)
+
+        exit_quiz_btn, scrolling_element = _wait_quiz_page_after_quiz_starting(self.driver)
+        time.sleep(5)
+
+        str_date = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
+        image_name = f"screenshot_{str_date}.png"
+
+        fullpage_screenshot(
+            self.driver, 
+            scrolling_element=scrolling_element,
+            file=download_path / image_name,
+            time_delay=2)
+        
+        exit_quiz_btn.click()
+
+    @repeater(TIMEOUT)
+    def download_from_reading_page(self, url:str, download_path:Path):
         self.driver.get(url)
         time.sleep(5)
-        scrolling_elemet = _wait_reading_page(self.driver)
+        scrolling_element, left_side_bar, coursera_chat_bot_btn = _wait_reading_page(self.driver)
 
         str_date = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
         pdf_name = f"page_{str_date}.pdf"
@@ -429,9 +521,12 @@ class CourseraParser:
         with open(download_path / pdf_name, "wb") as file:
             file.write(base64.b64decode(base64code))
 
-        fullpage_screenshot(self.driver, scrolling_elemet, file=download_path / image_name)
-
-        return NotImplemented
+        fullpage_screenshot(
+            self.driver, 
+            scrolling_element=scrolling_element,
+            removing_elements=[coursera_chat_bot_btn],
+            # removing_elements=[left_side_bar, coursera_chat_bot_btn]
+            file=download_path / image_name)
 
     @repeater(TIMEOUT)
     def download_from_video_page(self, url:str, download_path:Path):
@@ -605,13 +700,16 @@ class CourseraParser:
                     lesson_name = f'{lesson_index+1} {prepare_dir_name(lesson_data["name"])}'
                     lesson_type = lesson_data["type"]
                     lesson_url = lesson_data["url"]
-                    video_download_path = download_path / course_name / week_name / lesson_lessons_group_items__group_name / lesson_name
+                    lesson_download_path = download_path / course_name / week_name / lesson_lessons_group_items__group_name / lesson_name
                     print(f"\t\t{lesson_name}")
 
-                    make_dirs_if_not_exists(video_download_path)
+                    make_dirs_if_not_exists(lesson_download_path)
                     
                     if lesson_type.lower() == "video":
-                        self.download_from_video_page(lesson_url, video_download_path)
+                        self.download_from_video_page(lesson_url, lesson_download_path)
                     
+                    elif lesson_type.lower() == "quiz":
+                        self.download_from_quiz_page(lesson_url, lesson_download_path)
+
                     else:
-                        self.download_screenshot(lesson_url, download_path)
+                        self.download_from_reading_page(lesson_url, lesson_download_path)
