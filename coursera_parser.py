@@ -371,9 +371,9 @@ class CourseraParser:
         assert lesson_name, "Empty lesson name"
         assert lesson_url.startswith("http"), "Invalid url"
         assert (DEBUG and lesson_type.lower() in available_lesson_types) or not DEBUG, \
-                f"Unrecognized lesson type {lesson_type}"
+                f"Unrecognized lesson type {lesson_type}. Set DEBUG = False in defines.py to disable this."
         assert (DEBUG and lesson_type_class.lower() in available_lesson_type_classes) or not DEBUG, \
-                f"Unrecognized lesson type class {lesson_type_class}"
+                f"Unrecognized lesson type class {lesson_type_class}. Set DEBUG = False in defines.py to disable this."
 
         lesson_data = {
             "name": lesson_name,
