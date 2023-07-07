@@ -10,6 +10,7 @@ import argparse
 import warnings
 import colorama
 import traceback
+import base64
 
 from pathlib import Path
 from defines import ROOT_DIR
@@ -22,6 +23,7 @@ from utils import prepare_dir_name
 from utils import get_inner_text
 from utils import make_dirs_if_not_exists
 from utils import repeater
+from utils import fullpage_screenshot
 from driver_builder import build_chrome_driver
 from bs4 import BeautifulSoup
 from selenium import webdriver 
@@ -32,6 +34,7 @@ from selenium.webdriver.remote.webdriver import BaseWebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
 from colorama import Fore
+from datetime import datetime
 
 from typing import Union
 from typing import List
@@ -55,6 +58,10 @@ week_page_items_paths = {
     "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div.css-6t2mmp", # ! css class required !
     "lessons_groups__lessons__type_class": "li > div"
    
+}
+
+reading_page_items_paths = {
+    "scrolling_element": ".ItemPageLayout_content_body"
 }
 
 video_page_items_paths = {
@@ -232,6 +239,22 @@ def _wait_login_page(driver:BaseWebDriver):
     return email_field, password_field, button_send
 
 
+def _wait_reading_page(driver:BaseWebDriver):
+    print("Loading login page items")
+    wait = WebDriverWait(driver, TIMEOUT)
+
+    print("Loading scrolling element")
+    scrolling_element = wait.until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR,
+            reading_page_items_paths["scrolling_element"]
+        ) 
+    )
+
+    print("Reading page loaded")
+    return scrolling_element
+
+
 class CourseraParser:
     def __init__(self, webdriver:BaseWebDriver = None):
         self.driver = webdriver or build_chrome_driver(
@@ -391,6 +414,24 @@ class CourseraParser:
                 return True
                 
         return False
+
+    @repeater(TIMEOUT)
+    def download_screenshot(self, url:str, download_path:Path):
+        self.driver.get(url)
+        time.sleep(5)
+        scrolling_elemet = _wait_reading_page(self.driver)
+
+        str_date = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
+        pdf_name = f"page_{str_date}.pdf"
+        image_name = f"screenshot_{str_date}.png"
+
+        base64code = self.driver.print_page()
+        with open(download_path / pdf_name, "wb") as file:
+            file.write(base64.b64decode(base64code))
+
+        fullpage_screenshot(self.driver, scrolling_elemet, file=download_path / image_name)
+
+        return NotImplemented
 
     @repeater(TIMEOUT)
     def download_from_video_page(self, url:str, download_path:Path):
@@ -571,3 +612,6 @@ class CourseraParser:
                     
                     if lesson_type.lower() == "video":
                         self.download_from_video_page(lesson_url, video_download_path)
+                    
+                    else:
+                        self.download_screenshot(lesson_url, download_path)
