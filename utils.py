@@ -220,7 +220,8 @@ def close_tabs(driver:RemoteWebDriver, save_tabs:List[int] = [0]):
 def fullpage_screenshot(driver: RemoteWebDriver, 
                         scrolling_element: WebElement,
                         removing_elements: List[WebElement] = [], 
-                        file: Union[str, Path] = DOWNLOAD_PATH / f"fullpage-screenshot_{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.png"):
+                        file: Union[str, Path] = DOWNLOAD_PATH / f"fullpage-screenshot_{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.png",
+                        time_delay:float = 0.2):
     """
     Saves full page screenshot from selenium webdriver
     Originally modivicated from https://stackoverflow.com/questions/41721734/take-screenshot-of-full-page-with-selenium-python-with-chromedriver
@@ -271,7 +272,7 @@ def fullpage_screenshot(driver: RemoteWebDriver,
     for rectangle in rectangles:
         if previous is not None:
             driver.execute_script("arguments[0].scrollTo({0}, {1})".format(rectangle[0], rectangle[1]), scrolling_element)
-            time.sleep(0.2)
+            time.sleep(time_delay)
     
         file_name = "part_{0}.png".format(part)
     
