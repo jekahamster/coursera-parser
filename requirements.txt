@@ -2,3 +2,4 @@ selenium==4.7.2
 webdriver_manager==3.8.5
 beautifulsoup4==4.11.1
 colorama
+python-dotenv
