@@ -3,7 +3,7 @@ import pathlib
 
 ROOT_DIR = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 
-DEBUG = True
+DEBUG = False
 
 DOWNLOAD_PATH = ROOT_DIR / "downloads"
 COOKIES_PATH = ROOT_DIR / "cookies"
