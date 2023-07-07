@@ -2,14 +2,31 @@ import os
 import time
 import traceback
 import random
+import pathlib
 
+from datetime import datetime
+from PIL import Image
 from bs4 import BeautifulSoup, NavigableString
 from defines import WEBDRIVER_PATH
 from defines import DOWNLOAD_PATH
 from defines import COOKIES_PATH
+from defines import TIMEOUT
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
+from selenium.webdriver.remote.webdriver import BaseWebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+
+
+from pathlib import Path
+from typing import Union
+from typing import Callable
+from typing import List
 
 
 DEFAULT_REPEATER_ERRORS_TO_EXCEPT = (
@@ -19,7 +36,7 @@ DEFAULT_REPEATER_ERRORS_TO_EXCEPT = (
 )
 
 
-def prepare_file_name(file_name):
+def prepare_file_name(file_name:str) -> str:
     """
     Remove forbidden for file naming chars in windows
     
@@ -41,7 +58,7 @@ def prepare_file_name(file_name):
     return file_name
 
 
-def prepare_dir_name(dir_name, max_name_len=30):
+def prepare_dir_name(dir_name:str, max_name_len:int = 30) -> str:
     """
     Remove forbidden for dir naming chars in windows
 
@@ -67,7 +84,7 @@ def prepare_dir_name(dir_name, max_name_len=30):
     return dir_name.strip()
 
 
-def get_inner_text(parent:BeautifulSoup):
+def get_inner_text(parent:BeautifulSoup) -> str:
     """
     Gets text only inner the block, without texts inside her childs 
 
@@ -102,7 +119,7 @@ def get_inner_text(parent:BeautifulSoup):
 #     return inner_text
 
 
-def make_dirs_if_not_exists(path):
+def make_dirs_if_not_exists(path:Union[str, pathlib.Path]):
     """
     Make dirst if not exists
 
@@ -128,7 +145,10 @@ def init():
     make_dirs_if_not_exists(COOKIES_PATH)
 
 
-def repeater(timeout, retry=5, random_timeout_function=random.random, errors=DEFAULT_REPEATER_ERRORS_TO_EXCEPT):
+def repeater(timeout:float, 
+             retry:int = 5, 
+             random_timeout_function:Callable[[], float] = random.random, 
+             errors = DEFAULT_REPEATER_ERRORS_TO_EXCEPT):
     """
     Repeat function 'retry' times
 
@@ -170,3 +190,103 @@ def repeater(timeout, retry=5, random_timeout_function=random.random, errors=DEF
             raise Exception(f"Repeater was tried about {retry} times without results")
         return wrapper
     return inner
+
+
+def close_tabs(driver:RemoteWebDriver, save_tabs:List[int] = [0]):
+        """ Close all tabs opened by extension """
+        wait = WebDriverWait(driver, TIMEOUT)
+        wait.until(
+            lambda driver: len(driver.window_handles) > 1
+        )
+        
+        tabs_mask = [False for _ in range(len(driver.window_handles))]
+        for tab_index in save_tabs:
+            tabs_mask[tab_index] = True
+        
+        pointer = 0
+        while pointer < len(driver.window_handles):
+            if tabs_mask[pointer]:
+                 pointer += 1
+                 continue
+            
+            driver.switch_to.window(driver.window_handles[pointer])
+            driver.close()
+            
+            tabs_mask.pop(pointer)
+
+        driver.switch_to.window(driver.window_handles[0])
+
+
+def fullpage_screenshot(driver: RemoteWebDriver, 
+                        scrolling_element: WebElement,
+                        removing_elements: List[WebElement] = [], 
+                        file: Union[str, Path] = DOWNLOAD_PATH / f"fullpage-screenshot_{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.png"):
+    """
+    Saves full page screenshot from selenium webdriver
+    Originally modivicated from https://stackoverflow.com/questions/41721734/take-screenshot-of-full-page-with-selenium-python-with-chromedriver
+    
+    Slightly refactored by jekahamster
+    :param driver: Selenium webdriber
+    :param scrolling_element: WebElement that shoud be scrolled
+    :param removing_elements: List of WebElements which should be deleted for image
+    :param file: Filepath to save screenshot
+    """
+
+    for elem in removing_elements:        
+        driver.execute_script("""
+            var element = arguments[0];
+            element.parentNode.removeChild(element);
+        """, elem)
+
+    total_width = int(scrolling_element.get_attribute("offsetWidth"))
+    total_height = int(scrolling_element.get_attribute("scrollHeight"))
+    viewport_width = int(scrolling_element.get_attribute("clientWidth"))
+    viewport_height = int(scrolling_element.get_attribute("clientHeight"))
+     
+    rectangles = []
+    i = 0
+    while i < total_height:
+        j = 0
+        top_height = i + viewport_height
+    
+        if top_height > total_height:
+            top_height = total_height
+    
+        while j < total_width:
+            top_width = j + viewport_width
+    
+            if top_width > total_width:
+                top_width = total_width
+    
+            rectangles.append((j, i, top_width,top_height))
+    
+            j += viewport_width
+    
+        i += viewport_height
+    
+    stitched_image = Image.new('RGB', (total_width, total_height))
+    previous = None
+    part = 0
+    
+    for rectangle in rectangles:
+        if previous is not None:
+            driver.execute_script("arguments[0].scrollTo({0}, {1})".format(rectangle[0], rectangle[1]), scrolling_element)
+            time.sleep(0.2)
+    
+        file_name = "part_{0}.png".format(part)
+    
+        # driver.get_screenshot_as_file(file_name)
+        scrolling_element.screenshot(file_name)
+        screenshot = Image.open(file_name)
+    
+        if rectangle[1] + viewport_height > total_height:
+            offset = (rectangle[0], total_height - viewport_height)
+        else:
+            offset = (rectangle[0], rectangle[1])
+        stitched_image.paste(screenshot, offset)
+        del screenshot
+        os.remove(file_name)
+        part += 1
+        previous = rectangle
+    
+    stitched_image.save(file)
