@@ -53,5 +53,22 @@ class TestCourseraParser(unittest.TestCase):
         for file_name in file_names:
             self.assertTrue(file_name in downloaded_files)
 
+    def test_week_page(self):
+        # User specified
+        url = "https://www.coursera.org/learn/deep-neural-network/home/week/3"
+        # --------------
+        
+        driver = build_chrome_driver(
+            headless=False, 
+            no_logging=True, 
+            detach=False
+        )
+        coursera_parser = CourseraParser(driver)
+        week_data = coursera_parser.get_week_data(url)
+        print(f"Week name: {week_data['name']}")
+        for lessons_block in week_data:
+            raise NotImplementedError
+
+
 if __name__ == "__main__":
     unittest.main()
