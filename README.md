@@ -4,7 +4,7 @@
 
 This program allows you to download courses from Coursera. 
 
-Program can download video lessons, accompanying materials, quiz assignments, and other types of lessons in the form of screenshots and PDF files.
+Program can download video lessons, accompanying materials(mp4 in different resolutions, subtitles), quiz assignments, and other types of lessons in the form of screenshots and PDF files.
 
 ## How to use
 
