@@ -1,7 +1,7 @@
 import sys
-import pathlib
 import json
 
+from pathlib import Path
 from command_parser import CommandParserBuilder
 from driver_builder import build_chrome_driver
 from defines import ROOT_DIR
@@ -12,8 +12,10 @@ from coursera_parser import CourseraParser
 from utils import prepare_file_name
 from utils import init 
 
+from typing import Union
 
-def get_course_data(parser, url, download_path):
+
+def get_course_data(parser:CourseraParser, url:str, download_path:Path):
     course_data = parser.get_course_data(url)
     file_name = prepare_file_name(course_data["name"])
     prepared_file_name = prepare_file_name(file_name)
@@ -22,7 +24,7 @@ def get_course_data(parser, url, download_path):
         json.dump(course_data, file, indent=2)
 
 
-def download_course_by_data(parser, course_data_path, download_path):
+def download_course_by_data(parser:CourseraParser, course_data_path:Path, download_path:Path):
     
     course_data = None 
     with open(course_data_path, "r", encoding="utf-8") as file:
@@ -69,6 +71,15 @@ def main(args_):
 
         coursera_parser.login_by_site(email, password)
         coursera_parser.save_cookies(COOKIES_PATH / file_name)
+    
+    elif parse_res.command == "download-video":
+        url = parse_res.url
+        path = Path(parse_res.path)
+        file_name = parse_res.cookies
+        
+        coursera_parser.login_by_cookies(COOKIES_PATH / file_name)
+        coursera_parser.download_from_video_page(url=url, download_path=path)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
