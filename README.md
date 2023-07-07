@@ -4,6 +4,8 @@
 
 This program allows you to download courses from Coursera. 
 
+Program can download video lessons, accompanying materials, quiz assignments, and other types of lessons in the form of screenshots and PDF files.
+
 ## How to use
 
 There are three commands: `login`, `get-course-data`, and `download-course`. If you want to download a course, you must follow these instructions:
