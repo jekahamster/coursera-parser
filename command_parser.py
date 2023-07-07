@@ -2,11 +2,15 @@ import os
 import sys
 import pathlib 
 import argparse
+import dotenv
 
+from defines import DOWNLOAD_PATH
 from defines import DEFAULT_SESSION_FNAME
 
+dotenv.load_dotenv()
 
-def _setup_course_data_parser(parser: argparse.ArgumentParser):
+
+def _setup_course_data_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument(
         "-u", "--url",
         action="store",
@@ -24,7 +28,7 @@ def _setup_course_data_parser(parser: argparse.ArgumentParser):
     return parser
 
 
-def _setup_download_course_parser(parser: argparse.ArgumentParser):
+def _setup_download_course_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument(
         "-p", "--path",
         action="store",
@@ -44,17 +48,19 @@ def _setup_download_course_parser(parser: argparse.ArgumentParser):
     return parser
 
 
-def _setup_login_parser(parser):
+def _setup_login_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument(
         "--email",
         action="store",
-        required=True
+        required=not os.environ.get("COURSERA_EMAIL"),
+        default=os.environ.get("COURSERA_EMAIL")
     )
 
     parser.add_argument(
         "--password",
         action="store",
-        required=True
+        required=not os.environ.get("COURSERA_PASSWORD"),
+        default=os.environ.get("COURSERA_PASSWORD")
     )
 
     parser.add_argument(
@@ -66,6 +72,34 @@ def _setup_login_parser(parser):
 
     return parser
 
+
+def _setup_download_video_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.add_argument(
+        "-u", "--url",
+        action="store",
+        required=True,
+        type=str,
+        help="Url to coursera video-lesson"
+    )
+
+    parser.add_argument(
+        "-p", "--path",
+        action="store",
+        required=False,
+        type=str,
+        default=DOWNLOAD_PATH,
+        help="Path to saving data"
+    )
+
+    parser.add_argument(
+        "--cookies",
+        action="store",
+        required=False, 
+        default=DEFAULT_SESSION_FNAME,
+        help="Path to cookies"
+    )
+
+    return parser
 
 
 class CommandParserBuilder:
@@ -80,11 +114,13 @@ class CommandParserBuilder:
 
         course_data_parser = subparsers.add_parser("get-course-data")
         course_download_parser = subparsers.add_parser("download-course")
-        login_parser = subparsers.add_parser("login")
+        login_parser = subparsers.add_parser("login", help="Login to coursera submodule. You also can create .env file like .env.example to set defatult params. After that you can use `login` command without --email and --password specfication")
+        download_video_parser = subparsers.add_parser("download-video")
 
         course_data_parser = _setup_course_data_parser(course_data_parser)
         course_download_parser = _setup_download_course_parser(course_download_parser)
         login_parser = _setup_login_parser(login_parser)
+        download_video_parser = _setup_download_video_parser(download_video_parser)
 
         return parser
 
