@@ -33,6 +33,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.remote.webdriver import BaseWebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException
 from colorama import Fore
 from datetime import datetime
 
@@ -48,14 +49,14 @@ week_page_items_paths = {
     # "week_items": ".css-vquajy ul li a",
     "week_name": ".rc-PeriodPageRefresh h1",
     
-    "week_items": "nav[aria-label='Course'] div[title='Course Material'] ul li a",
+    "week_items": "nav[aria-label='Course'] .cds-AccordionRoot-container.cds-AccordionRoot-silent ul li a[data-test='rc-WeekNavigationItem']", # Left side bar with all weeks
     
     "lessons_groups": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
     "lessons_groups__name": "h2",
     "lessons_groups__lessons": ".cds-AccordionRoot-container > div ul li",
     "lessons_groups__lessons__link": "li > div > a",
     "lessons_groups__lessons__name": "p[data-test='rc-ItemName']",
-    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div.css-6t2mmp", # ! css class required !
+    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div:not(.rc-WeekItemStatusPill)",
     "lessons_groups__lessons__type_class": "li > div"
    
 }
@@ -76,7 +77,8 @@ reading_page_items_paths = {
 video_page_items_paths = {
     "downloads_dropdown_menu_button": "#downloads-dropdown-btn",
     "downloads_dropdown_menu_items": 'ul[role="menu"].bt3-dropdown-menu > li.menuitem > a',
-    "file_name": "span",
+    "downloads_dropdown_menu_items__file_name": ":nth-child(1)",
+    "downloads_dropdown_menu_items__file_type": ":nth-child(2)",
     "video_name": "h1.video-name"
 }
 
@@ -91,7 +93,7 @@ available_lesson_types = list(map(lambda x: x.lower(), [
     "video", 
     "programming assignment", 
     "practice programming assignment", 
-    "quiz", 
+    "quiz",
     "ungraded external tool", 
     "reading",
     "peer-graded assignment",
@@ -99,7 +101,9 @@ available_lesson_types = list(map(lambda x: x.lower(), [
     "Discussion Prompt",
     "Practice Quiz",
     "Graded External Tool",
-    "Ungraded Plugin"
+    "Ungraded Plugin",
+    "Ungraded App Item",                    # https://www.coursera.org/learn/machine-learning-probability-and-statistics/home/week/1
+    "Lab"                                   # Upper url. Like programming assignment
 ]))
 
 available_lesson_type_classes = list(map(lambda x: x.lower(), [
@@ -108,7 +112,11 @@ available_lesson_type_classes = list(map(lambda x: x.lower(), [
     "WeekSingleItemDisplay-lecture",
     "WeekSingleItemDisplay-discussionPrompt",
     "WeekSingleItemDisplay-exam",
-    "WeekSingleItemDisplay-ungradedWidget"
+    "WeekSingleItemDisplay-ungradedWidget",
+    "WeekSingleItemDisplay-ungradedLti",         # Ungraded App Item
+    "WeekSingleItemDisplay-ungradedLab",
+    "WeekSingleItemDisplay-quiz",
+    "WeekSingleItemDisplay-gradedProgramming"
 ]))
 
 
@@ -208,7 +216,7 @@ def _wait_video_dropdown_menu_loading(driver:BaseWebDriver):
     print("Loading file names")
     wait.until(
         lambda driver: len(driver.find_elements(
-                By.CSS_SELECTOR, f'{video_page_items_paths["downloads_dropdown_menu_items"]} {video_page_items_paths["file_name"]}:nth-child(1)'
+                By.CSS_SELECTOR, f'{video_page_items_paths["downloads_dropdown_menu_items"]}{video_page_items_paths["downloads_dropdown_menu_items__file_name"]}'
             )) >= len(dropdown_items)
     )
     time.sleep(1)
@@ -404,8 +412,8 @@ class CourseraParser:
         original_file_name = item.get_attribute("download").strip()
         point_index = original_file_name[::-1].find(".")
         suffix = original_file_name[-point_index-1:]
-        file_name = item.find_elements(By.CSS_SELECTOR, "span")[0].text.strip()
-        
+        file_name = item.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items__file_name"]).text.strip()
+        # file_type = item.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items__file_type"]).text.strip()
         return f"{file_name}{suffix}"
 
     def user_control(self, url:str = None):
@@ -486,9 +494,11 @@ class CourseraParser:
         self.driver.get(url)
         start_quiz_btn = _wait_quiz_page_before_quiz_starting(self.driver)
 
-        honor_code_btn = self.driver.find_element(By.CSS_SELECTOR, quiz_page_items_paths["honor_code_accept_btn"])
-        if honor_code_btn:
+        try:
+            honor_code_btn = self.driver.find_element(By.CSS_SELECTOR, quiz_page_items_paths["honor_code_accept_btn"])
             honor_code_btn.click()
+        except NoSuchElementException:
+            pass
 
         start_quiz_btn.click()
         time.sleep(1)
