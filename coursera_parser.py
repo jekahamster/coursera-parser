@@ -52,11 +52,11 @@ week_page_items_paths = {
     "week_items": "nav[aria-label='Course'] .cds-AccordionRoot-container.cds-AccordionRoot-silent ul li a[data-test='rc-WeekNavigationItem']", # Left side bar with all weeks
     
     "lessons_groups": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
-    "lessons_groups__name": "h2",
+    "lessons_groups__name": "h2 .cds-AccordionHeader-content .cds-AccordionHeader-labelGroup > span",
     "lessons_groups__lessons": ".cds-AccordionRoot-container > div ul li",
     "lessons_groups__lessons__link": "li > div > a",
     "lessons_groups__lessons__name": "p[data-test='rc-ItemName']",
-    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div:not(.rc-WeekItemStatusPill)",
+    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div:not(.rc-WeekItemStatusPill, .rc-WeekItemDeadlinePill):nth-last-of-type(1)",
     "lessons_groups__lessons__type_class": "li > div"
    
 }
@@ -116,7 +116,8 @@ available_lesson_type_classes = list(map(lambda x: x.lower(), [
     "WeekSingleItemDisplay-ungradedLti",         # Ungraded App Item
     "WeekSingleItemDisplay-ungradedLab",
     "WeekSingleItemDisplay-quiz",
-    "WeekSingleItemDisplay-gradedProgramming"
+    "WeekSingleItemDisplay-gradedProgramming",
+    "WeekSingleItemDisplay-ungradedProgramming"
 ]))
 
 
@@ -411,9 +412,11 @@ class CourseraParser:
     def _get_file_name_from_video_dropdown_item(self, item:WebElement):
         original_file_name = item.get_attribute("download").strip()
         point_index = original_file_name[::-1].find(".")
-        suffix = original_file_name[-point_index-1:]
+        if point_index != -1:
+            suffix = original_file_name[-point_index-1:]
+        else:
+            suffix = "."+item.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items__file_type"]).text.strip()
         file_name = item.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items__file_name"]).text.strip()
-        # file_type = item.find_element(By.CSS_SELECTOR, video_page_items_paths["downloads_dropdown_menu_items__file_type"]).text.strip()
         return f"{file_name}{suffix}"
 
     def user_control(self, url:str = None):
@@ -506,8 +509,7 @@ class CourseraParser:
         exit_quiz_btn, scrolling_element = _wait_quiz_page_after_quiz_starting(self.driver)
         time.sleep(5)
 
-        str_date = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
-        image_name = f"screenshot_{str_date}.png"
+        image_name = f"quiz_screenshot.png"
 
         fullpage_screenshot(
             self.driver, 
@@ -523,9 +525,8 @@ class CourseraParser:
         time.sleep(5)
         scrolling_element, left_side_bar, coursera_chat_bot_btn = _wait_reading_page(self.driver)
 
-        str_date = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
-        pdf_name = f"page_{str_date}.pdf"
-        image_name = f"screenshot_{str_date}.png"
+        pdf_name = f"reading_page.pdf"
+        image_name = f"reading_screenshot.png"
 
         base64code = self.driver.print_page()
         with open(download_path / pdf_name, "wb") as file:
