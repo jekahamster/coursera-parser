@@ -57,7 +57,8 @@ week_page_items_paths = {
     "lessons_groups__lessons__link": "li > div > a",
     "lessons_groups__lessons__name": "p[data-test='rc-ItemName']",
     "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div:not(.rc-WeekItemStatusPill, .rc-WeekItemDeadlinePill):nth-last-of-type(1)",
-    "lessons_groups__lessons__type_class": "li > div"
+    "lessons_groups__lessons__type_class": "li > div",
+    "lessons_groups__lessons__hidden_item": ".locked-tooltip"
    
 }
 
@@ -103,7 +104,8 @@ available_lesson_types = list(map(lambda x: x.lower(), [
     "Graded External Tool",
     "Ungraded Plugin",
     "Ungraded App Item",                    # https://www.coursera.org/learn/machine-learning-probability-and-statistics/home/week/1
-    "Lab"                                   # Upper url. Like programming assignment
+    "Lab",                                  # Upper url. Like programming assignment
+    "Graded App Item"
 ]))
 
 available_lesson_type_classes = list(map(lambda x: x.lower(), [
@@ -117,7 +119,8 @@ available_lesson_type_classes = list(map(lambda x: x.lower(), [
     "WeekSingleItemDisplay-ungradedLab",
     "WeekSingleItemDisplay-quiz",
     "WeekSingleItemDisplay-gradedProgramming",
-    "WeekSingleItemDisplay-ungradedProgramming"
+    "WeekSingleItemDisplay-ungradedProgramming",
+    "WeekSingleItemDisplay-gradedLti"
 ]))
 
 
@@ -384,12 +387,19 @@ class CourseraParser:
         assert (DEBUG and lesson_type_class.lower() in available_lesson_type_classes) or not DEBUG, \
                 f"Unrecognized lesson type class {lesson_type_class}. Set DEBUG = False in defines.py to disable this."
 
+        try:
+            lesson_item.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__lessons__hidden_item"])
+            is_locked = True
+        except NoSuchElementException:
+            is_locked = False
+
         lesson_data = {
             "name": lesson_name,
             "url": lesson_url,
             "type": lesson_type,
             "type_descr": lesson_type_descr,
-            "type_class": lesson_type_class
+            "type_class": lesson_type_class,
+            "is_locked": is_locked
         }
 
         return lesson_data
@@ -711,12 +721,13 @@ class CourseraParser:
                     lesson_name = f'{lesson_index+1} {prepare_dir_name(lesson_data["name"])}'
                     lesson_type = lesson_data["type"]
                     lesson_url = lesson_data["url"]
+                    lesson_is_locked = lesson_data["is_locked"]
                     lesson_download_path = download_path / course_name / week_name / lesson_lessons_group_items__group_name / lesson_name
                     print(f"\t\t{lesson_name}")
 
                     make_dirs_if_not_exists(lesson_download_path)
                     
-                    if lesson_type.lower() == "video":
+                    if lesson_type.lower() == "video" and not lesson_is_locked:
                         self.download_from_video_page(lesson_url, lesson_download_path)
                     
                     elif lesson_type.lower() == "quiz":
