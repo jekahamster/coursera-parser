@@ -96,18 +96,18 @@ login_page_items_paths = {
 }
 
 available_lesson_types = list(map(lambda x: x.lower(), [
-    "",
-    "video", 
-    "programming assignment", 
-    "practice programming assignment", 
-    "quiz",
-    "ungraded external tool", 
-    "reading",
-    "peer-graded assignment",
-    "review your peers",
-    "Discussion Prompt",
-    "Practice Quiz",
-    "Graded External Tool",
+    "",                                 # screenshot
+    "video",                            # video
+    "programming assignment",           # None
+    "practice programming assignment",  # None
+    "quiz",                             # Quiz
+    "ungraded external tool",           # ?
+    "reading",                          # screenshot
+    "peer-graded assignment",           # ?
+    "review your peers",                # ?
+    "Discussion Prompt",                # screenshot
+    "Practice Quiz",                    # Quiz
+    "Graded External Tool",             # ?
     "Ungraded Plugin",
     "Ungraded App Item",                    # https://www.coursera.org/learn/machine-learning-probability-and-statistics/home/week/1
     "Lab",                                  # Upper url. Like programming assignment
@@ -754,7 +754,7 @@ class CourseraParser:
                     if lesson_type.lower() == "video" and not lesson_is_locked:
                         self.download_from_video_page(lesson_url, lesson_download_path)
                     
-                    elif lesson_type.lower() == "quiz":
+                    elif "quiz" in lesson_type.lower():
                         self.download_from_quiz_page(lesson_url, lesson_download_path)
 
                     else:
