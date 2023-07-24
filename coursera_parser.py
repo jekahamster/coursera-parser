@@ -18,6 +18,7 @@ from defines import DOWNLOAD_PATH
 from defines import WEBDRIVER_PATH
 from defines import TIMEOUT
 from defines import DEBUG
+from defines import ALLOW_LESSON_MISSING
 from utils import prepare_file_name
 from utils import prepare_dir_name
 from utils import get_inner_text
@@ -32,7 +33,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.remote.webdriver import BaseWebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import (
+    TimeoutException, 
+    WebDriverException, 
+    NoSuchElementException, 
+    StaleElementReferenceException
+)
 from selenium.common.exceptions import NoSuchElementException
 from colorama import Fore
 from datetime import datetime
@@ -413,8 +419,23 @@ class CourseraParser:
         lessons_data = []
 
         for lesson_index, lesson_item in enumerate(lessons_items):
-            lesson_data = self._get_lesson_data(lesson_item)
-            
+            try:
+                lesson_data = self._get_lesson_data(lesson_item)
+            except TypeError as e:
+                print(Fore.RED + f"{e} was occured while getting lesson data!")
+                if not ALLOW_LESSON_MISSING:
+                    print(traceback.format_exc())
+                    raise e
+                
+                lesson_data = {
+                    "name": "",
+                    "url": "",
+                    "type": "",
+                    "type_descr": "",
+                    "type_class": "",
+                    "is_locked": ""
+                }
+
             lessons_data.append(lesson_data)
         
         return lessons_data
@@ -718,6 +739,9 @@ class CourseraParser:
                 print(f"\t{lesson_lessons_group_items__group_name}")
                 
                 for lesson_index, lesson_data in enumerate(lesson_group_data["lessons"]):
+                    if ALLOW_LESSON_MISSING and not lesson_data["name"]:
+                        continue
+                    
                     lesson_name = f'{lesson_index+1} {prepare_dir_name(lesson_data["name"])}'
                     lesson_type = lesson_data["type"]
                     lesson_url = lesson_data["url"]
@@ -726,7 +750,7 @@ class CourseraParser:
                     print(f"\t\t{lesson_name}")
 
                     make_dirs_if_not_exists(lesson_download_path)
-                    
+
                     if lesson_type.lower() == "video" and not lesson_is_locked:
                         self.download_from_video_page(lesson_url, lesson_download_path)
                     
