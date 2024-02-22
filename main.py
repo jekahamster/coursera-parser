@@ -1,7 +1,9 @@
 import sys
 import json
+import colorama as clr
 
 from pathlib import Path
+from selenium.common.exceptions import NoSuchWindowException
 from command_parser import CommandParserBuilder
 from driver_builder import build_chrome_driver
 from defines import ROOT_DIR
@@ -13,6 +15,9 @@ from utils import prepare_file_name
 from utils import init 
 
 from typing import Union
+
+
+clr.init(autoreset=True)
 
 
 def get_course_data(parser:CourseraParser, url:str, download_path:Path):
@@ -42,6 +47,7 @@ def main(args_):
     init()
 
     driver = build_chrome_driver(
+        webdriver_path=WEBDRIVER_PATH,
         headless=False, 
         tor=False, 
         no_logging=True,
@@ -78,7 +84,13 @@ def main(args_):
         file_name = parse_res.cookies
         
         coursera_parser.login_by_cookies(COOKIES_PATH / file_name)
-        coursera_parser.download_from_video_page(url=url, download_path=path)
+        try:
+            coursera_parser.download_from_video_page(url=url, download_path=path)
+        except NoSuchWindowException as e:
+            print(clr.Fore.RED + clr.Style.BRIGHT + "Error!")
+            print("Window was closed")
+            print(e)
+            print("Try again but don't close window")
 
 
 if __name__ == "__main__":
