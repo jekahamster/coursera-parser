@@ -5,11 +5,22 @@ import shutil
 from defines import ROOT_DIR
 from defines import COOKIES_PATH
 from defines import DEFAULT_SESSION_FNAME
+from defines import WEBDRIVER_PATH
 from driver_builder import build_chrome_driver
 from coursera_parser import CourseraParser
+from coursera_parser import week_page_items_paths
 
 
 class TestCourseraParser(unittest.TestCase):
+    def setUp(self):
+        self.driver = build_chrome_driver(
+            webdriver_path=WEBDRIVER_PATH,
+            headless=False, 
+            no_logging=True, 
+            detach=False
+        )
+
+
     def test_download_from_video_page(self):
         # TODO
         # Separate cookies for tests and cookies for exploitation
@@ -31,14 +42,7 @@ class TestCourseraParser(unittest.TestCase):
 
         os.makedirs(storage_folder_path)
 
-
-        driver = build_chrome_driver(
-            headless=False, 
-            no_logging=True, 
-            detach=False, 
-            download_path=storage_folder_path
-        )
-        coursera_parser = CourseraParser(driver)
+        coursera_parser = CourseraParser(self.driver)
         coursera_parser.login_by_cookies(COOKIES_PATH / DEFAULT_SESSION_FNAME)
 
         coursera_parser.download_from_video_page(url, storage_folder_path)
@@ -58,12 +62,7 @@ class TestCourseraParser(unittest.TestCase):
         url = "https://www.coursera.org/learn/deep-neural-network/home/week/3"
         # --------------
         
-        driver = build_chrome_driver(
-            headless=False, 
-            no_logging=True, 
-            detach=False
-        )
-        coursera_parser = CourseraParser(driver)
+        coursera_parser = CourseraParser(self.driver)
         week_data = coursera_parser.get_week_data(url)
         print(f"Week name: {week_data['name']}")
         for lessons_block in week_data:
