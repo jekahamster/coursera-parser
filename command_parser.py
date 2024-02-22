@@ -112,10 +112,10 @@ class CommandParserBuilder:
 
         subparsers = parser.add_subparsers(dest="command")
 
-        course_data_parser = subparsers.add_parser("get-course-data")
-        course_download_parser = subparsers.add_parser("download-course")
+        course_data_parser = subparsers.add_parser("get-course-data", help="Get course data json from coursera")
+        course_download_parser = subparsers.add_parser("download-course", help="Download course from coursera")
         login_parser = subparsers.add_parser("login", help="Login to coursera submodule. You also can create .env file like .env.example to set defatult params. After that you can use `login` command without --email and --password specfication")
-        download_video_parser = subparsers.add_parser("download-video")
+        download_video_parser = subparsers.add_parser("download-video", help="Download single video from coursera")
 
         course_data_parser = _setup_course_data_parser(course_data_parser)
         course_download_parser = _setup_download_course_parser(course_download_parser)
