@@ -48,18 +48,12 @@ def add_extensions(options: Options, extensions_path:Union[str, pathlib.Path] = 
         options.add_extension(path)
 
 
-def build_chrome_driver(webdriver_path=None, headless=False, tor=False, no_logging=False, detach=False, download_path=None, extensions=False, fullscreen=False, window_size=(1920, 1080)):
+def build_chrome_driver(webdriver_path=None, headless=False, tor=False, no_logging=False, detach=False, download_path=None, fullscreen=False, window_size=(1920, 1080)):
     chrome_options = _get_chrome_options(headless=headless, tor=tor, no_logging=no_logging, detach=detach, download_path=download_path)
     executable_path = webdriver_path or ChromeDriverManager(path=str(ROOT_DIR)).install()
     service = chrome.service.Service(executable_path=str(executable_path))
 
-    if extensions:
-        add_extensions(chrome_options, EXTENSIONS_PATH)
-
     chrome_driver = webdriver.Chrome(service=service, options=chrome_options)
-
-    if extensions:
-        close_tabs(chrome_driver, save_tabs=[1])
 
     if fullscreen:
         chrome_driver.maximize_window()
