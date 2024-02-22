@@ -1,6 +1,7 @@
 import sys
 import json
 import colorama as clr
+import os
 
 from pathlib import Path
 from selenium.common.exceptions import NoSuchWindowException
@@ -51,7 +52,7 @@ def main(args_):
         headless=False, 
         tor=False, 
         no_logging=True,
-        detach=False,
+        detach=True,
         download_path=DOWNLOAD_PATH
     )
     coursera_parser = CourseraParser(webdriver=driver)
@@ -91,6 +92,9 @@ def main(args_):
             print("Window was closed")
             print(e)
             print("Try again but don't close window")
+
+    os.system("pause")
+    driver.quit()
 
 
 if __name__ == "__main__":
