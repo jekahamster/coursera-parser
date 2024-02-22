@@ -11,6 +11,7 @@ from defines import WEBDRIVER_PATH
 from defines import DOWNLOAD_PATH
 from defines import COOKIES_PATH
 from defines import TIMEOUT
+from defines import DIRNAME_CHAR_COUNT
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import WebDriverException
@@ -58,7 +59,7 @@ def prepare_file_name(file_name:str) -> str:
     return file_name
 
 
-def prepare_dir_name(dir_name:str, max_name_len:int = 30) -> str:
+def prepare_dir_name(dir_name:str, max_name_len:int = DIRNAME_CHAR_COUNT) -> str:
     """
     Remove forbidden for dir naming chars in windows
 
@@ -217,6 +218,14 @@ def close_tabs(driver:RemoteWebDriver, save_tabs:List[int] = [0]):
         driver.switch_to.window(driver.window_handles[0])
 
 
+def close_all_windows_except_main(driver:BaseWebDriver):
+    main_window = driver.window_handles[0]
+    for window in driver.window_handles[1:]:
+        driver.switch_to.window(window)
+        driver.close()
+    driver.switch_to.window(main_window)
+
+
 def fullpage_screenshot(driver: RemoteWebDriver, 
                         scrolling_element: WebElement,
                         removing_elements: List[WebElement] = [], 
@@ -291,3 +300,24 @@ def fullpage_screenshot(driver: RemoteWebDriver,
         previous = rectangle
     
     stitched_image.save(file)
+
+
+
+def get_downloaded_file_name(driver, wait_time = None):
+    driver.execute_script("window.open()")
+    WebDriverWait(driver,10).until(EC.new_window_is_opened)
+    driver.switch_to.window(driver.window_handles[-1])
+    driver.get("chrome://downloads/")
+
+    endTime = time.time() + wait_time if wait_time else None
+    while True:
+        try:
+            fileName = driver.execute_script("return document.querySelector('#contentAreaDownloadsView .downloadMainArea .downloadContainer description:nth-of-type(1)').value")
+            if fileName:
+                return fileName
+        except:
+            pass
+
+        time.sleep(1)
+        if wait_time and time.time() > endTime:
+            break
