@@ -995,5 +995,8 @@ class CourseraParser:
                     elif lesson_action == "code" and not lesson_is_locked:
                         self.download_from_programming_assignment_page(lesson_url, lesson_download_path)
 
+                    elif lesson_is_locked:
+                        self.download_from_reading_page(lesson_url, lesson_download_path)
+
                     else:
-                        raise Exception(f"Unrecognized lesson action {lesson_action}")
+                        raise Exception(f"Unrecognized lesson action {Fore.YELLOW}{lesson_action}{Fore.RESET}!")
