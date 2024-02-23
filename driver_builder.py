@@ -1,6 +1,8 @@
 import os
 import time
 import pathlib
+import warnings 
+import colorama as clr
 
 from defines import ROOT_DIR
 from defines import EXTENSIONS_PATH
@@ -12,6 +14,9 @@ from selenium.webdriver import firefox
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager 
 from typing import Union
+
+
+clr.init(autoreset=True)
 
 
 def _get_chrome_options(headless=True, tor=False, no_logging=False, detach=False, download_path="./downloads"):
@@ -49,6 +54,9 @@ def add_extensions(options: Options, extensions_path:Union[str, pathlib.Path] = 
 
 
 def build_chrome_driver(webdriver_path=None, headless=False, tor=False, no_logging=False, detach=False, download_path=None, fullscreen=False, window_size=(1920, 1080)):
+    if not detach:
+        warnings.warn(clr.Fore.RED + clr.Style.DIM + "File downloads may be interrupted if the files are not downloaded before the script completes. Use " + clr.Fore.YELLOW + "detach=True" + clr.Fore.RED + " to avoid this problem.")
+
     chrome_options = _get_chrome_options(headless=headless, tor=tor, no_logging=no_logging, detach=detach, download_path=download_path)
     executable_path = webdriver_path or ChromeDriverManager(path=str(ROOT_DIR)).install()
     service = chrome.service.Service(executable_path=str(executable_path))
