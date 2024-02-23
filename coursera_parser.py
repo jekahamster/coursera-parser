@@ -81,7 +81,7 @@ quiz_page_items_paths = {
 reading_page_items_paths = {
     "scrolling_element": "#main-container",
     # "left_side_bar": "div:has(> #main-container) > div:nth-child(1)",
-    "coursera_bot_chat_button": "#chat-button-container",
+    "coursera_bot_chat_button": "#coursera-coach-widget",
     "header_container": "#header-container",
     "close_menu": "div:has(> #main-container) > div:nth-child(1) button[data-track-component='focused_lex_nav_close_button']",
     "open_menu": "#main-container button[data-track-component='focused_lex_nav_open_button']"
@@ -103,7 +103,7 @@ login_page_items_paths = {
 lab_page_items_paths = {
     "scrolling_element": "#main-container",
     "load_notebook_button": "#main-container button[role='link']",
-    "coursera_bot_chat_button": "#chat-button-container",
+    "coursera_bot_chat_button": "#coursera-coach-widget",
     "honor_code_accept_btn": "div.cds-Modal-container button[data-test='continue-button']"
 }
 
@@ -376,12 +376,16 @@ def _wait_reading_page(driver:BaseWebDriver):
         open_menu_btn = None
 
     print("Loading coursera bot chat button")
-    coursera_bot_chat_button = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            reading_page_items_paths["coursera_bot_chat_button"]
-        ) 
-    )
+    try:
+        wait_short = WebDriverWait(driver, 4)
+        coursera_bot_chat_button = wait_short.until(
+            lambda driver: driver.find_element(
+                By.CSS_SELECTOR,
+                reading_page_items_paths["coursera_bot_chat_button"]
+            ) 
+        )
+    except TimeoutException:
+        coursera_bot_chat_button = None
 
     print("Reading page loaded")
     return scrolling_element, header_container, close_menu_btn, open_menu_btn, coursera_bot_chat_button
@@ -448,21 +452,13 @@ def _wait_programming_assignment_page(driver:BaseWebDriver):
         ) 
     )
 
-    print("Loading coursera bot chat button")
-    coursera_bot_chat_button = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            lab_page_items_paths["coursera_bot_chat_button"]
-        ) 
-    )
-
     try:
         honor_code_accept_btn = driver.find_element(By.CSS_SELECTOR, lab_page_items_paths["honor_code_accept_btn"])
     except NoSuchElementException:
         honor_code_accept_btn = None
 
     print("Lab page loaded")
-    return scrolling_element, load_notebook_btn, coursera_bot_chat_button, honor_code_accept_btn
+    return scrolling_element, load_notebook_btn, honor_code_accept_btn
 
 
 def _wait_jupter_notebook_page(driver:BaseWebDriver):
@@ -743,7 +739,7 @@ class CourseraParser:
         fullpage_screenshot(
             self.driver, 
             scrolling_element=scrolling_element,
-            removing_elements=[header_container, coursera_bot_chat_button],
+            removing_elements=filter(lambda x: x is not None, [header_container, coursera_bot_chat_button]),
             file=download_path / image_name)
 
     @repeater(TIMEOUT)
@@ -782,7 +778,7 @@ class CourseraParser:
         for thread in threads:
             thread.join()
 
-        video_name = self.driver.find_element(By.CSS_SELECTOR, video_page_items_paths["video_name"]).text.strip()
+        video_name = video_name_item.text.strip()
         with open(download_path / f"video_name.txt", "w", encoding="UTF-8") as file:
             file.write(video_name)
 
@@ -823,7 +819,7 @@ class CourseraParser:
     def download_from_programming_assignment_page(self, url:str, download_path:Path):
         self.driver.get(url)
         self.change_download_path(download_path)
-        scrolling_element, load_notebook_btn, coursera_chat_bot_btn, honor_code_accept_btn = _wait_programming_assignment_page(self.driver)
+        scrolling_element, load_notebook_btn, honor_code_accept_btn = _wait_programming_assignment_page(self.driver)
 
         if honor_code_accept_btn:
             honor_code_accept_btn.click()
