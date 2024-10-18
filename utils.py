@@ -232,6 +232,8 @@ def fullpage_screenshot(driver: RemoteWebDriver,
                         file: Union[str, Path] = DOWNLOAD_PATH / f"fullpage-screenshot_{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.png",
                         time_delay:float = 0.2):
     """
+    Source: https://gist.github.com/PashaWNN/fc2ff352e54db7aee6f85dddca32a8f7
+    
     Saves full page screenshot from selenium webdriver
     Originally modivicated from https://stackoverflow.com/questions/41721734/take-screenshot-of-full-page-with-selenium-python-with-chromedriver
     
