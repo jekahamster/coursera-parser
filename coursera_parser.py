@@ -42,9 +42,13 @@ from selenium.common.exceptions import (
     NoSuchElementException, 
     StaleElementReferenceException
 )
+from page_processors.video_page_processor import VideoPageActions
+from page_processors.week_page_processor import WeekPageActions, week_page_items_paths
+from page_processors.reading_page_processor import ReadingPageActions
 from selenium.common.exceptions import NoSuchElementException
 from colorama import Fore
 from datetime import datetime
+from page_processors.quiz_page_processor import QuizPageActions
 
 from typing import Union
 from typing import List
@@ -52,31 +56,6 @@ from typing import Dict
 
 
 colorama.init(autoreset=True)
-
-week_page_items_paths = {
-    "course_name": "h2[title]", # h3.cds-137
-    # "week_items": ".css-vquajy ul li a",
-    "week_name": ".rc-PeriodPageRefresh h1",
-    
-    "week_items": "nav[aria-label='Course'] .cds-AccordionRoot-container.cds-AccordionRoot-silent ul li a[data-test='rc-WeekNavigationItem']", # Left side bar with all weeks
-    
-    "lessons_groups": ".rc-LessonCollectionBody > .rc-ItemGroupLesson",
-    "lessons_groups__name": "h2 .cds-AccordionHeader-content .cds-AccordionHeader-labelGroup > span",
-    "lessons_groups__lessons": ".cds-AccordionRoot-container > div ul li",
-    "lessons_groups__lessons__link": "li > div > a",
-    "lessons_groups__lessons__name": "p[data-test='rc-ItemName']",
-    "lessons_groups__lessons__type": ".rc-WeekItemAnnotations > div:has(.rc-EffortText)",
-    "lessons_groups__lessons__type_class": "li > div",
-    "lessons_groups__lessons__hidden_item": ".locked-tooltip"
-   
-}
-
-quiz_page_items_paths = {
-    "open_quiz_button": "#main div[data-e2e='CoverPageRow__right-side-view'] button",
-    "exit_quiz_button": "div[data-classname='tunnelvision-window-0'] .rc-TunnelVisionClose",
-    "scrolling_element": "#TUNNELVISIONWRAPPER_CONTENT_ID",
-    "honor_code_accept_btn": ".cds-Dialog-dialog .align-right .cds-button-disableElevation"
-}
 
 reading_page_items_paths = {
     "scrolling_element": "#main-container",
@@ -87,16 +66,10 @@ reading_page_items_paths = {
     "open_menu": "#main-container button[data-track-component='focused_lex_nav_open_button']"
 }
 
-video_page_items_paths = {
-    "downloads_tab_button": "button[id$='DOWNLOADS']",
-    "files_links": "a[download]",
-    "video_name": "h1.video-name",
-}
-
 login_page_items_paths = {
-    "login_email_field": "form #email",
-    "login_password_field": "form #password",
-    "login_button_send": "form button[type='submit'][data-e2e='login-form-submit-button']"
+    "login_email_field": "input[name='email']",
+    "login_password_field": "input[name='password']",
+    "login_button_send": "button[type='submit']"
 }
 
 
@@ -200,114 +173,6 @@ lesson_type2action = {k.lower() : v for k, v in lesson_type2action.items()}
 lesson_type_class2action = {k.lower() : v for k, v in lesson_type_class2action.items()}
 
 
-def _download_and_save_file(url:str, path:Union[str, Path]):
-    print(f"GET: {url}")
-    try:
-        response = requests.request("GET", url)
-        with open(path, "wb") as file:
-            file.write(response.content)
-        print(f"{Fore.GREEN}Downloaded{Fore.RESET}: {path}")
-    except Exception as e:
-        print(Fore.RED + str(e))
-        print(traceback.format_exc())
-        exit()
-
-
-def _wait_week_page_loading(driver:BaseWebDriver):
-    global week_page_items_paths
-    
-    print("Loading week page")
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading week items")
-    wait.until(
-        lambda driver: driver.find_elements(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["week_items"]
-        )
-    )
-    
-    print("Loading week name")
-    wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["week_name"]
-        )
-    )
-
-    print("Loading lessons groups")
-    wait.until(
-        lambda driver: driver.find_elements(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_groups"]
-        )
-    )
-
-    print("Loading lessons")
-    wait.until(
-        lambda driver: driver.find_elements(
-            By.CSS_SELECTOR,
-            week_page_items_paths["lessons_groups"] + " " + week_page_items_paths["lessons_groups__lessons"]
-        )
-    )
-
-    print("Loading lesson type")
-    wait.until(
-        lambda driver: driver.find_elements(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_groups"] + \
-                " " + \
-                week_page_items_paths["lessons_groups__lessons"] + \
-                " " + \
-                week_page_items_paths["lessons_groups__lessons__type"]
-        )
-    )
-    
-    time.sleep(3)
-    print("Week page loaded")
-    print()
-
-
-def _wait_video_page_loading(driver:BaseWebDriver):
-    print("Loading video page")
-    time.sleep(2)
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading downloads tab button")
-    downloads_tab_btn = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            video_page_items_paths["downloads_tab_button"]
-        )
-    )
-
-    print("Loading video name")
-    video_name_item = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            video_page_items_paths["video_name"]
-        )
-    )
-
-    print("Video page loaded")
-    
-    return downloads_tab_btn, video_name_item
-
-
-def _wait_video_fownloads_tab_loading(driver:BaseWebDriver):
-    print("Loading video downloads tab")
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading files links")
-    files_links_items = wait.until(
-        lambda driver: driver.find_elements(
-            By.CSS_SELECTOR,
-            video_page_items_paths["files_links"]
-        )
-    )
-
-    print("Video downloads tab loaded")
-    return files_links_items
 
 
 def _wait_login_page(driver:BaseWebDriver):
@@ -340,96 +205,6 @@ def _wait_login_page(driver:BaseWebDriver):
 
     print("Login page loaded")
     return email_field, password_field, button_send
-
-
-def _wait_reading_page(driver:BaseWebDriver):
-    print("Loading reading page items")
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading scrolling element")
-    scrolling_element = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            reading_page_items_paths["scrolling_element"]
-        ) 
-    )
-
-    print("Loading header container")
-    header_container = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            reading_page_items_paths["header_container"]
-        )
-    )
-
-    print("Loading button to close menu")
-    close_menu_btn = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            reading_page_items_paths["close_menu"]
-        )
-    )
-
-    try:
-        open_menu_btn = driver.find_element(By.CSS_SELECTOR, reading_page_items_paths["open_menu"])
-    except NoSuchElementException:
-        open_menu_btn = None
-
-    print("Loading coursera bot chat button")
-    try:
-        wait_short = WebDriverWait(driver, 4)
-        coursera_bot_chat_button = wait_short.until(
-            lambda driver: driver.find_element(
-                By.CSS_SELECTOR,
-                reading_page_items_paths["coursera_bot_chat_button"]
-            ) 
-        )
-    except TimeoutException:
-        coursera_bot_chat_button = None
-
-    print("Reading page loaded")
-    return scrolling_element, header_container, close_menu_btn, open_menu_btn, coursera_bot_chat_button
-
-
-def _wait_quiz_page_before_quiz_starting(driver:BaseWebDriver):
-    print("Loading quiz page items")
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading open quiz button")
-    open_quiz_btn = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            quiz_page_items_paths["open_quiz_button"]
-        ) 
-    )
-
-
-    print("Quiz page loaded")
-    return open_quiz_btn
-
-
-def _wait_quiz_page_after_quiz_starting(driver:BaseWebDriver):
-    print("Loading qiuiz tasks page items")
-    wait = WebDriverWait(driver, TIMEOUT)
-
-    print("Loading exit quiz button")
-    exit_quiz_btn = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            quiz_page_items_paths["exit_quiz_button"]
-        ) 
-    )
-
-    print("Loading quiz tasks scrolling element")
-    quiz_scrolling_element = wait.until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR,
-            quiz_page_items_paths["scrolling_element"]
-        ) 
-    )
-
-    print("Quiz tasks page loaded")
-    return exit_quiz_btn, quiz_scrolling_element
 
 
 def _wait_programming_assignment_page(driver:BaseWebDriver):
@@ -494,125 +269,6 @@ class CourseraParser:
                                         no_logging=True, 
                                         detach=False, 
                                         download_path=DOWNLOAD_PATH)
-
-    def _get_lesson_data(self, lesson_item:WebElement):
-        """
-        Gets information about lesson by lesson item
-        
-        Parameters
-        ----------
-        lesson_item : selenium.webdriver.remote.webelement.WebElement
-            Lesson item. 
-            Check path in week_page_items_paths: lessons_groups + lessons_items.
-        
-
-        Returns
-        -------
-        dict 
-            {
-                'name': str, # lesson name
-                'url': str,  # lesson url
-                'type': str  # lesson type (Check available_lesson_types variable)
-            }
-        """
-        lesson_item_bs = BeautifulSoup(lesson_item.get_attribute("outerHTML"), "html.parser")
-        lesson_url = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__link"])["href"].strip()
-        lesson_name = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__name"]).get_text().strip()
-        lesson_type_class = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__type_class"])["data-test"]
-        
-        lesson_type_item = lesson_item_bs.select_one(week_page_items_paths["lessons_groups__lessons__type"])
-        if not lesson_type_item:
-            warnings.warn(f"Empty lesson_type at lesson '{lesson_name}'")
-
-        lesson_type = get_inner_text(lesson_type_item) if lesson_type_item else ""
-        lesson_type_descr = lesson_type_item.text if lesson_type_item else ""
-
-        lesson_action = lesson_type2action[lesson_type.lower()]
-        lesson_action_recheck = lesson_type_class2action[lesson_type_class.lower()]
-
-        if lesson_url.startswith("/"):
-            lesson_url = "https://www.coursera.org" + lesson_url
-
-        assert lesson_action is not None, f"Lesson action for {lesson_type} is None"
-        assert lesson_action == lesson_action_recheck, \
-            f"Lesson type {lesson_type} with action {lesson_action} and lesson type class {lesson_type_class} with action {lesson_action_recheck} are not match."
-        assert lesson_url, "Empty lesson url"
-        assert lesson_name, "Empty lesson name"
-        assert lesson_url.startswith("http"), "Invalid url"
-        assert (DEBUG and lesson_type.lower() in lesson_type2action.keys()) or not DEBUG, \
-                f"Unrecognized lesson type {lesson_type}. Set DEBUG = False in defines.py to disable this."
-        assert (DEBUG and lesson_type_class.lower() in lesson_type_class2action.keys()) or not DEBUG, \
-                f"Unrecognized lesson type class {lesson_type_class}. Set DEBUG = False in defines.py to disable this."
-
-        try:
-            lesson_item.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__lessons__hidden_item"])
-            is_locked = True
-        except NoSuchElementException:
-            is_locked = False
-
-        lesson_data = {
-            "name": lesson_name,
-            "url": lesson_url,
-            "type": lesson_type,
-            "type_descr": lesson_type_descr,
-            "type_class": lesson_type_class,
-            "action": lesson_action,
-            "is_locked": is_locked
-        }
-
-        return lesson_data
-
-    def _get_lessons_data(self, lessons_block:WebElement):
-        time.sleep(2)
-
-        lessons_items = WebDriverWait(lessons_block, TIMEOUT).until(
-            lambda lessons_block: lessons_block.find_elements(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__lessons"])
-        )
-        lessons_data = []
-
-        for lesson_index, lesson_item in enumerate(lessons_items):
-            try:
-                lesson_data = self._get_lesson_data(lesson_item)
-            except TypeError as e:
-                print(Fore.RED + f"{e} was occured while getting lesson data!")
-                if not ALLOW_LESSON_MISSING:
-                    print(traceback.format_exc())
-                    raise e
-                
-                lesson_data = {
-                    "name": "",
-                    "url": "",
-                    "type": "",
-                    "type_descr": "",
-                    "type_class": "",
-                    "is_locked": ""
-                }
-            except AssertionError as e:
-                print(traceback.format_exc())
-                print(f"Lesson index: {lesson_index}")
-                raise e
-
-            lessons_data.append(lesson_data)
-
-        
-        return lessons_data
-
-    def _get_file_name_from_video_link_item(self, item:WebElement):
-        original_file_name = item.get_attribute("download").strip()
-        suffix = Path(original_file_name).suffix
-        
-        link_title = item.text.strip()
-        link_title_suffix = link_title.rfind(" ")
-        file_name_stem = link_title[:link_title_suffix]
-
-        if not suffix:
-            suffix = "." + link_title[link_title_suffix + 1:].strip()
-
-        if suffix == "WebVTT":
-            suffix = ".vtt"
-
-        file_name = f"{file_name_stem}{suffix}"
-        return file_name
 
     def user_control(self, url:str = None):
         if url:
@@ -687,101 +343,7 @@ class CourseraParser:
                 
         return False
 
-    @repeater(TIMEOUT)
-    def download_from_quiz_page(self, url:str, download_path:Path):
-        self.driver.get(url)
-        start_quiz_btn = _wait_quiz_page_before_quiz_starting(self.driver)
-
-        try:
-            honor_code_btn = self.driver.find_element(By.CSS_SELECTOR, quiz_page_items_paths["honor_code_accept_btn"])
-            honor_code_btn.click()
-        except NoSuchElementException:
-            pass
-
-        start_quiz_btn.click()
-        time.sleep(1)
-
-        exit_quiz_btn, scrolling_element = _wait_quiz_page_after_quiz_starting(self.driver)
-        time.sleep(5)
-
-        image_name = f"quiz_screenshot.png"
-
-        fullpage_screenshot(
-            self.driver, 
-            scrolling_element=scrolling_element,
-            file=download_path / image_name,
-            time_delay=2)
-        
-        exit_quiz_btn.click()
-
-    @repeater(TIMEOUT)
-    def download_from_reading_page(self, url:str = None, download_path:Path = None):
-        # if url is not specified then processcurrent page
-        
-        assert download_path, "Download path is not specified"
-
-        if url:
-            self.driver.get(url)
-        
-        time.sleep(5)
-        scrolling_element, header_container, close_menu_btn, open_menu_btn, coursera_bot_chat_button = _wait_reading_page(self.driver)
-        
-        if not open_menu_btn:
-            close_menu_btn.click()
-
-        pdf_name = f"reading_page.pdf"
-        image_name = f"reading_screenshot.png"
-
-        base64code = self.driver.print_page()
-        with open(download_path / pdf_name, "wb") as file:
-            file.write(base64.b64decode(base64code))
-
-        fullpage_screenshot(
-            self.driver, 
-            scrolling_element=scrolling_element,
-            removing_elements=filter(lambda x: x is not None, [header_container, coursera_bot_chat_button]),
-            file=download_path / image_name)
-
-    @repeater(TIMEOUT)
-    def download_from_video_page(self, url:str, download_path:Path):
-        self.driver.get(url)
-        
-        downloads_tab_btn, video_name_item = _wait_video_page_loading(self.driver)
-
-        if not download_path.exists():
-            os.makedirs(download_path)
-
-        downloads_tab_btn.click()
-        time.sleep(1)
-        
-        files_links_items = _wait_video_fownloads_tab_loading(self.driver)
-        threads = []
-
-        for item in files_links_items:
-            time.sleep(random.random()*2)
-
-            file_name = self._get_file_name_from_video_link_item(item)
-
-            file_name = prepare_file_name(file_name)
-            href = item.get_attribute("href")
-
-            assert href.startswith("https://") or href.startswith("http://"), f"Invalid url {href}" 
-
-            downloading_thread = threading.Thread(target=_download_and_save_file, kwargs={
-                "url": href,
-                "path": download_path / file_name
-            })
-            
-            threads.append(downloading_thread)
-            downloading_thread.start()
-
-        for thread in threads:
-            thread.join()
-
-        video_name = video_name_item.text.strip()
-        with open(download_path / f"video_name.txt", "w", encoding="UTF-8") as file:
-            file.write(video_name)
-
+   
     @repeater(TIMEOUT)
     def download_from_jupyter_notebook_page(self, url:str = None, download_path:Path = None):
         # if url is not specified then processcurrent page
@@ -835,46 +397,6 @@ class CourseraParser:
         time.sleep(5)
         close_all_windows_except_main(self.driver)
 
-    @repeater(TIMEOUT)
-    def get_week_data(self, url:str):
-        print(f"Get week data")
-        print(f"URL: {url}")
-        print()
-
-        self.driver.get(url)
-
-        _wait_week_page_loading(self.driver)
-
-        lessons_groups = self.driver.find_elements(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["lessons_groups"])
-
-        week_name = self.driver.find_element(
-            By.CSS_SELECTOR, 
-            week_page_items_paths["week_name"]).text.strip()
-
-        week_data = {
-            "name": week_name,
-            "lessons_groups": []
-        }
-
-        for group_index, lessons_group in enumerate(lessons_groups):
-            lessons_groups__name = lessons_group.find_element(By.CSS_SELECTOR, week_page_items_paths["lessons_groups__name"]).text.strip()
-            
-            try:
-                lessons_data = self._get_lessons_data(lessons_group)
-            except AssertionError as e:
-                print(f"Group index: {group_index}")
-                print(f"Group name: {lessons_groups__name}")
-                raise e
-
-            group_data = {
-                "name": lessons_groups__name,
-                "lessons": lessons_data
-            }
-            week_data["lessons_groups"].append(group_data)
-        
-        return week_data     
 
     def get_course_data(self, url:str):
         """
@@ -911,7 +433,7 @@ class CourseraParser:
         """
 
         self.driver.get(url)
-        _wait_week_page_loading(self.driver)
+        WeekPageActions.wait_week_page_loading(self.driver)
     
         course_name = self.driver.find_element(
             By.CSS_SELECTOR, 
@@ -940,7 +462,7 @@ class CourseraParser:
 
         for week in course_data["weeks"]:
             url = week["url"]
-            week_data = self.get_week_data(url)
+            week_data = WeekPageActions.get_week_data(driver=self.driver, url=url)
             week["name"] += f" {week_data['name']}"
             week["lessons_groups"] = week_data["lessons_groups"]
         
@@ -983,20 +505,23 @@ class CourseraParser:
 
                     assert lesson_action is not None, "Lesson action is None"
 
-                    if lesson_action == "video" and not lesson_is_locked:
-                        self.download_from_video_page(lesson_url, lesson_download_path)
+                    if lesson_is_locked:
+                        continue
+                    
+                    if lesson_action == "video":
+                        VideoPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     elif lesson_action == "quiz":
-                        self.download_from_quiz_page(lesson_url, lesson_download_path)
+                        QuizPageActions.download(drver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     elif lesson_action == "screenshot" and not lesson_is_locked:
-                        self.download_from_reading_page(lesson_url, lesson_download_path)
+                        ReadingPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     elif lesson_action == "code" and not lesson_is_locked:
                         self.download_from_programming_assignment_page(lesson_url, lesson_download_path)
 
                     elif lesson_is_locked:
-                        self.download_from_reading_page(lesson_url, lesson_download_path)
+                        ReadingPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     else:
                         raise Exception(f"Unrecognized lesson action {Fore.YELLOW}{lesson_action}{Fore.RESET}!")

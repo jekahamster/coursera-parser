@@ -3,9 +3,11 @@ import time
 import pathlib
 import warnings 
 import colorama as clr
+import chromedriver_autoinstaller
 
 from defines import ROOT_DIR
 from defines import EXTENSIONS_PATH
+from defines import WEBDRIVER_PATH
 from utils import close_tabs
 from selenium import webdriver
 from selenium.webdriver import chrome
@@ -14,6 +16,7 @@ from selenium.webdriver import firefox
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager 
 from typing import Union
+from pathlib import Path
 
 
 clr.init(autoreset=True)
@@ -53,14 +56,24 @@ def add_extensions(options: Options, extensions_path:Union[str, pathlib.Path] = 
         options.add_extension(path)
 
 
-def build_chrome_driver(webdriver_path=None, headless=False, tor=False, no_logging=False, detach=False, download_path=None, fullscreen=False, window_size=(1920, 1080)):
+def build_chrome_driver(webdriver_path: str=None, headless=False, tor=False, no_logging=False, detach=False, download_path=None, fullscreen=False, window_size=(1920, 1080)):
     if not detach:
         warnings.warn(clr.Fore.RED + clr.Style.DIM + "File downloads may be interrupted if the files are not downloaded before the script completes. Use " + clr.Fore.YELLOW + "detach=True" + clr.Fore.RED + " to avoid this problem.")
 
+    if not webdriver_path:
+        # https://stackoverflow.com/questions/62017043/automatic-download-of-appropriate-chromedriver-for-selenium-in-python
+        webdriver_path: str = chromedriver_autoinstaller.install(path=WEBDRIVER_PATH.parent)
+        webdriver_path = Path(webdriver_path)
+        print(f"Downloaded webdriver: {webdriver_path}")
+    else:
+        webdriver_path = Path(webdriver_path)
+    
+    
     chrome_options = _get_chrome_options(headless=headless, tor=tor, no_logging=no_logging, detach=detach, download_path=download_path)
     executable_path = webdriver_path or ChromeDriverManager(path=str(ROOT_DIR)).install()
     service = chrome.service.Service(executable_path=str(executable_path))
-
+    
+    
     chrome_driver = webdriver.Chrome(service=service, options=chrome_options)
 
     if fullscreen:

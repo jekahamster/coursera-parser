@@ -48,7 +48,7 @@ def main(args_):
     init()
 
     driver = build_chrome_driver(
-        webdriver_path=WEBDRIVER_PATH,
+        webdriver_path=None, # WEBDRIVER_PATH,
         headless=False, 
         tor=False, 
         no_logging=True,

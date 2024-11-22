@@ -9,6 +9,7 @@ init.txt
 _tests*
 problems_solutions.txt
 .wdm
+.env*
 
 
 
