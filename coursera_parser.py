@@ -45,10 +45,10 @@ from selenium.common.exceptions import (
 from page_processors.video_page_processor import VideoPageActions
 from page_processors.week_page_processor import WeekPageActions, week_page_items_paths
 from page_processors.reading_page_processor import ReadingPageActions
+from page_processors.quiz_page_processor import QuizPageActions
 from selenium.common.exceptions import NoSuchElementException
 from colorama import Fore
 from datetime import datetime
-from page_processors.quiz_page_processor import QuizPageActions
 
 from typing import Union
 from typing import List
@@ -131,46 +131,30 @@ jupter_notebook_page_items_paths = {
 
 
 
-lesson_type2action = {
-    "": "screenshot",
-    "video": "video",
-    "programming assignment": "code",
-    "practice programming assignment": "code",
-    "quiz": "quiz",
-    "ungraded external tool": None, # ?
-    "reading": "screenshot",
-    "peer-graded assignment": None,
-    "review your peers": None,
-    "Discussion Prompt": "screenshot",
-    "Practice Quiz": "quiz",
-    "Graded External Tool": None,
-    "Ungraded Plugin": "screenshot", # (youtube link) https://www.coursera.org/learn/differential-equations-engineers/ungradedWidget/NLLHm/defining-the-exponential-logarithm-sine-and-cosine-functions-using-odes
-    "Ungraded App Item": "screenshot", # https://www.coursera.org/learn/machine-learning-probability-and-statistics/home/week/1
-    "Lab": "code", 
-    "Graded App Item": None,
-    "Guided Project": None,
-    "Practice Assignment": "code",
-    "Graded Assignment": "quiz"
-}
-
-lesson_type_class2action = {
-    "WeekSingleItemDisplay-lecture": "video",
-    "WeekSingleItemDisplay-supplement": "screenshot",
-    "WeekSingleItemDisplay-discussionPrompt": None,
-    "WeekSingleItemDisplay-exam": "quiz",
-    "WeekSingleItemDisplay-ungradedWidget": "screenshot", # Ungraded Plugin
-    "WeekSingleItemDisplay-ungradedLti": "screenshot", # Ungraded App Item
-    "WeekSingleItemDisplay-ungradedLab": "code",
-    "WeekSingleItemDisplay-quiz": "quiz",
-    "WeekSingleItemDisplay-gradedProgramming": "code",
-    "WeekSingleItemDisplay-ungradedProgramming": None,
-    "WeekSingleItemDisplay-gradedLti": None,
-    "WeekSingleItemDisplay-ungradedAssignment": "code", # Practice Assignment 
-    "WeekSingleItemDisplay-staffGraded": "quiz" # Graded Assignment
-}
-
-lesson_type2action = {k.lower() : v for k, v in lesson_type2action.items()}
-lesson_type_class2action = {k.lower() : v for k, v in lesson_type_class2action.items()}
+# lesson_type2action = {
+#     "": "screenshot",
+#     "video": "video",
+#     # "programming assignment": "code",
+#     # "practice programming assignment": "code",
+#     "programming assignment": "screenshot",
+#     "practice programming assignment": "screenshot",
+#     "quiz": "quiz",
+#     "ungraded external tool": None, # ?
+#     "reading": "screenshot",
+#     "peer-graded assignment": None,
+#     "review your peers": None,
+#     "Discussion Prompt": "screenshot",
+#     "Practice Quiz": "quiz",
+#     "Graded External Tool": None,
+#     "Ungraded Plugin": "screenshot", # (youtube link) https://www.coursera.org/learn/differential-equations-engineers/ungradedWidget/NLLHm/defining-the-exponential-logarithm-sine-and-cosine-functions-using-odes
+#     "Ungraded App Item": "screenshot", # https://www.coursera.org/learn/machine-learning-probability-and-statistics/home/week/1
+#     "Lab": "code", 
+#     "Graded App Item": None,
+#     "Guided Project": None,
+#     # "Practice Assignment": "code",
+#     "Practice Assignment": "screenshot",
+#     "Graded Assignment": "quiz"
+# }
 
 
 
@@ -512,7 +496,7 @@ class CourseraParser:
                         VideoPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     elif lesson_action == "quiz":
-                        QuizPageActions.download(drver=self.driver, url=lesson_url, download_path=lesson_download_path)
+                        QuizPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
 
                     elif lesson_action == "screenshot" and not lesson_is_locked:
                         ReadingPageActions.download(driver=self.driver, url=lesson_url, download_path=lesson_download_path)
